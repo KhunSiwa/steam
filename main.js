@@ -239,11 +239,16 @@ class AvatarManager {
     this.defaultExpression = 'neutral';
     this.showHeadset = true;
     
-    // Animation tracking state
-    this.isSpeaking = false;
-    this.mouthLoopInterval = null;
-    this.talkingFrame = 0;
+    // State machine
+    this.currentState = 'IDLE';
     
+    // Timeout/interval tracking
+    this.blinkTimeout = null;
+    this.lookTimeout = null;
+    this.reactionTimeout = null;
+    this.speechTimeout = null;
+    this.isSpeaking = false;
+
     // Mouth SVG path commands for lip-sync and expressions
     this.mouthPaths = {
       neutral: "M 182 215 Q 200 222 218 215",
@@ -283,6 +288,10 @@ class AvatarManager {
         r: "M 228 146 Q 240 146 252 154"
       }
     };
+
+    // Start background loops
+    this.startBlinkLoop();
+    this.startEyeLookLoop();
   }
 
   applyConfig(config) {
@@ -303,12 +312,97 @@ class AvatarManager {
       this.svg.classList.remove('hide-headsets');
     }
 
-    // Apply default expression
-    this.setExpression(this.defaultExpression);
+    // Set default state
+    this.setAvatarState('IDLE');
+  }
+
+  setAvatarState(state) {
+    if (this.currentState === 'STOPPED' && state !== 'IDLE' && state !== 'STOPPED') {
+      // Allow exiting stopped state manually or when starting LIVE/AWAY modes
+      this.currentState = 'IDLE';
+    }
+
+    // Clear previous state classes
+    const states = ['idle', 'talking', 'happy', 'surprised', 'thinking', 'excited', 'confused', 'stopped'];
+    states.forEach(s => this.svg.classList.remove(`state-${s}`));
+    
+    this.currentState = state;
+    this.svg.classList.add(`state-${state.toLowerCase()}`);
+    
+    // Clear reaction timeout if transitioning
+    if (this.reactionTimeout) {
+      clearTimeout(this.reactionTimeout);
+      this.reactionTimeout = null;
+    }
+
+    // Update highlight on demo buttons if present
+    const btn = document.querySelector(`.demo-btn[data-state="${state}"]`);
+    if (btn) {
+      document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    switch (state) {
+      case 'IDLE':
+        this.stopTalkingAnimation();
+        this.setExpression(this.defaultExpression);
+        this.setVisualStatus(this.app.currentMode === 'AWAY' ? "Monitoring Chat" : "Ready", "listening");
+        break;
+        
+      case 'TALKING':
+        this.setVisualStatus("Speaking", "speaking");
+        this.startTalkingAnimation();
+        break;
+        
+      case 'HAPPY':
+        this.stopTalkingAnimation();
+        this.setExpression('happy');
+        this.setVisualStatus("Feeling: HAPPY", "thinking");
+        // Happy triggers body bounce once. Return to IDLE after 1500ms
+        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1500);
+        break;
+        
+      case 'SURPRISED':
+        this.stopTalkingAnimation();
+        this.setExpression('surprised');
+        this.setVisualStatus("Feeling: SURPRISED", "thinking");
+        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1500);
+        break;
+        
+      case 'THINKING':
+        this.stopTalkingAnimation();
+        this.setExpression('thinking');
+        this.setVisualStatus("Thinking...", "thinking");
+        // If triggered programmatically by AI, it will be held. If triggered manually, return to idle
+        if (!this.app.ttsManager.isSpeaking && this.app.currentMode !== 'AWAY') {
+          this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 2000);
+        }
+        break;
+        
+      case 'EXCITED':
+        this.stopTalkingAnimation();
+        this.setExpression('excited');
+        this.setVisualStatus("Feeling: EXCITED", "speaking");
+        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1800);
+        break;
+        
+      case 'CONFUSED':
+        this.stopTalkingAnimation();
+        this.setExpression('confused');
+        this.setVisualStatus("Feeling: CONFUSED", "thinking");
+        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1800);
+        break;
+        
+      case 'STOPPED':
+        this.stopTalkingAnimation();
+        this.setExpression('confused');
+        this.setVisualStatus("AI STOPPED", "speaking");
+        break;
+    }
   }
 
   setExpression(expr) {
-    if (this.isSpeaking) return; // Speech lip sync overrides static expression mouth shapes
+    if (this.isSpeaking) return;
     
     const mouthPath = this.mouthPaths[expr] || this.mouthPaths.neutral;
     const eyebrow = this.eyebrowPaths[expr] || this.eyebrowPaths.neutral;
@@ -323,66 +417,107 @@ class AvatarManager {
     this.stageStatusDot.className = `status-indicator-dot ${statusClass}`;
   }
 
-  startTalking() {
+  startTalkingAnimation() {
     if (this.isSpeaking) return;
     this.isSpeaking = true;
-    this.setVisualStatus("Speaking", "speaking");
-    
-    // Periodically cycle mouth shapes to simulate speech patterns
-    const talkPaths = [
-      this.mouthPaths.talk_open_mid,
-      this.mouthPaths.talk_open_wide,
-      this.mouthPaths.talk_open_narrow,
-      this.mouthPaths.talk_closed
-    ];
-    
-    this.mouthLoopInterval = setInterval(() => {
-      this.talkingFrame = (this.talkingFrame + 1) % talkPaths.length;
-      this.mouth.setAttribute('d', talkPaths[this.talkingFrame]);
-      
-      // Randomly twitch eyes slightly during speech
-      const eyeL = document.getElementById('eye-group-l');
-      const eyeR = document.getElementById('eye-group-r');
-      if (Math.random() > 0.85) {
-        const offset = (Math.random() - 0.5) * 2;
-        eyeL.setAttribute('transform', `translate(160, ${172 + offset})`);
-        eyeR.setAttribute('transform', `translate(240, ${172 + offset})`);
-      } else {
-        eyeL.setAttribute('transform', `translate(160, 172)`);
-        eyeR.setAttribute('transform', `translate(240, 172)`);
-      }
-    }, 120);
+    this.animateSpeechCycle();
   }
 
-  stopTalking() {
+  stopTalkingAnimation() {
     this.isSpeaking = false;
-    if (this.mouthLoopInterval) {
-      clearInterval(this.mouthLoopInterval);
-      this.mouthLoopInterval = null;
+    if (this.speechTimeout) {
+      clearTimeout(this.speechTimeout);
+      this.speechTimeout = null;
     }
     
-    // Return mouth to neutral/configured expression
-    this.setExpression(this.defaultExpression);
-    this.setVisualStatus(this.app.currentMode === 'AWAY' ? "Monitoring Chat" : "Ready", "listening");
-    
-    // Reset eye displacements
-    document.getElementById('eye-group-l').setAttribute('transform', `translate(160, 172)`);
-    document.getElementById('eye-group-r').setAttribute('transform', `translate(240, 172)`);
+    // Return mouth to expression shape
+    const activeExpr = (this.currentState !== 'TALKING' && this.currentState !== 'STOPPED') ? this.currentState.toLowerCase() : this.defaultExpression;
+    this.setExpression(activeExpr);
   }
 
-  triggerReaction(reactionName) {
-    if (this.isSpeaking) return;
+  animateSpeechCycle() {
+    if (!this.isSpeaking) return;
+
+    const talkPaths = [
+      this.mouthPaths.talk_closed,
+      this.mouthPaths.talk_open_mid,
+      this.mouthPaths.talk_open_wide,
+      this.mouthPaths.talk_open_narrow
+    ];
     
-    this.setExpression(reactionName);
-    this.setVisualStatus(`Feeling: ${reactionName.toUpperCase()}`, "thinking");
-    
-    // Return back to default expression after 3 seconds
-    setTimeout(() => {
-      if (!this.isSpeaking) {
-        this.setExpression(this.defaultExpression);
-        this.setVisualStatus(this.app.currentMode === 'AWAY' ? "Monitoring Chat" : "Ready", "listening");
+    // Choose a random path
+    const randomPath = talkPaths[Math.floor(Math.random() * talkPaths.length)];
+    this.mouth.setAttribute('d', randomPath);
+
+    // Natural talking timing: randomize frame durations (between 80ms and 150ms)
+    const timings = [80, 120, 90, 150];
+    const duration = timings[Math.floor(Math.random() * timings.length)];
+
+    this.speechTimeout = setTimeout(() => {
+      this.animateSpeechCycle();
+    }, duration);
+  }
+
+  startBlinkLoop() {
+    const triggerBlink = () => {
+      const eyeL = document.querySelector('.eye-blink-l');
+      const eyeR = document.querySelector('.eye-blink-r');
+      
+      if (eyeL && eyeR) {
+        eyeL.classList.add('blink-active');
+        eyeR.classList.add('blink-active');
+        
+        setTimeout(() => {
+          eyeL.classList.remove('blink-active');
+          eyeR.classList.remove('blink-active');
+        }, 120);
       }
-    }, 3000);
+      
+      // Random blink every 3 to 6 seconds
+      const nextBlink = Math.random() * 3000 + 3000;
+      this.blinkTimeout = setTimeout(triggerBlink, nextBlink);
+    };
+    
+    this.blinkTimeout = setTimeout(triggerBlink, Math.random() * 3000 + 2000);
+  }
+
+  startEyeLookLoop() {
+    const triggerLook = () => {
+      // Don't look around if speaking or performing a specific reaction
+      if (this.isSpeaking || this.currentState !== 'IDLE') {
+        const nextLook = Math.random() * 4000 + 4000;
+        this.lookTimeout = setTimeout(triggerLook, nextLook);
+        return;
+      }
+      
+      const pupilL = document.getElementById('pupil-l');
+      const pupilR = document.getElementById('pupil-r');
+      
+      if (pupilL && pupilR) {
+        const lookDirections = [
+          { x: 0, y: 0 },   // Center
+          { x: -2, y: 0 },  // Left
+          { x: 2, y: 0 },   // Right
+          { x: 0, y: -2 }   // Up
+        ];
+        
+        const target = lookDirections[Math.floor(Math.random() * lookDirections.length)];
+        
+        pupilL.style.transform = `translate(${target.x}px, ${target.y}px)`;
+        pupilR.style.transform = `translate(${target.x}px, ${target.y}px)`;
+        
+        // Hold look for 1.2s to 2.2s, then snap back to center
+        setTimeout(() => {
+          pupilL.style.transform = `translate(0px, 0px)`;
+          pupilR.style.transform = `translate(0px, 0px)`;
+        }, Math.random() * 1000 + 1200);
+      }
+      
+      const nextLook = Math.random() * 5000 + 5000;
+      this.lookTimeout = setTimeout(triggerLook, nextLook);
+    };
+    
+    this.lookTimeout = setTimeout(triggerLook, 6000);
   }
 }
 
@@ -417,7 +552,6 @@ class TTSManager {
         this.currentUtterance = utterance;
         
         // Find matched voice
-        // For Thai (th-TH), look for a Thai voice. For English, look for English voice.
         let matchedVoice = null;
         if (langCode.startsWith('th')) {
           matchedVoice = this.voices.find(v => v.lang.includes('TH') || v.lang.includes('th'));
@@ -438,25 +572,25 @@ class TTSManager {
         utterance.lang = langCode;
 
         utterance.onstart = () => {
-          this.app.avatarManager.startTalking();
+          this.app.avatarManager.setAvatarState('TALKING');
         };
 
         utterance.onend = () => {
           this.isSpeaking = false;
-          this.app.avatarManager.stopTalking();
+          this.app.avatarManager.setAvatarState('IDLE');
           resolve();
         };
 
         utterance.onerror = (e) => {
           console.warn("SpeechSynthesis error: ", e);
           this.isSpeaking = false;
-          this.app.avatarManager.stopTalking();
+          this.app.avatarManager.setAvatarState('IDLE');
           resolve();
         };
 
         window.speechSynthesis.speak(utterance);
       } else {
-        // Fallback: If TTS is not supported or blocked by browser policies
+        // Fallback: If TTS is not supported
         console.warn("SpeechSynthesis not supported on this browser. Running fallback animation.");
         this.runFallbackAudioMock(text, resolve);
       }
@@ -464,14 +598,14 @@ class TTSManager {
   }
 
   runFallbackAudioMock(text, callback) {
-    this.app.avatarManager.startTalking();
+    this.app.avatarManager.setAvatarState('TALKING');
     // Rough estimation: 150ms per word + 1s base
     const wordCount = text.split(/\s+/).length;
     const duration = Math.min(Math.max(wordCount * 220 + 800, 1500), 7000);
     
     this.mockSpeakTimeout = setTimeout(() => {
       this.isSpeaking = false;
-      this.app.avatarManager.stopTalking();
+      this.app.avatarManager.setAvatarState('IDLE');
       callback();
     }, duration);
   }
@@ -485,7 +619,7 @@ class TTSManager {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
-    this.app.avatarManager.stopTalking();
+    this.app.avatarManager.setAvatarState('IDLE');
   }
 }
 
@@ -745,8 +879,8 @@ class ChatManager {
     const steps = [stepMod, stepRel, stepGen, stepVal, stepTts];
     steps.forEach(s => s.className = 'pending');
     
-    // Reset visual status indicator
-    this.app.avatarManager.setVisualStatus("Processing...", "thinking");
+    // Trigger THINKING state on avatar
+    this.app.avatarManager.setAvatarState('THINKING');
     
     // Show AI Processing details panel
     pipelinePanel.style.display = 'flex';
@@ -766,8 +900,7 @@ class ChatManager {
       this.app.avatarManager.setVisualStatus("Spam Filtered", "thinking");
       await delay(1500);
       pipelinePanel.style.display = 'none';
-      this.app.avatarManager.setExpression(this.app.avatarManager.defaultExpression);
-      this.app.avatarManager.setVisualStatus("Monitoring Chat", "listening");
+      this.app.avatarManager.setAvatarState('IDLE');
       return;
     }
     stepMod.className = 'done';
@@ -781,8 +914,7 @@ class ChatManager {
       stepRel.className = 'error';
       await delay(1000);
       pipelinePanel.style.display = 'none';
-      this.app.avatarManager.setExpression(this.app.avatarManager.defaultExpression);
-      this.app.avatarManager.setVisualStatus("Monitoring Chat", "listening");
+      this.app.avatarManager.setAvatarState('IDLE');
       return;
     }
     stepRel.className = 'done';
@@ -806,8 +938,7 @@ class ChatManager {
       this.appendSystemMessage("AI generated response blocked due to Safety Policy violations.");
       await delay(2000);
       pipelinePanel.style.display = 'none';
-      this.app.avatarManager.setExpression(this.app.avatarManager.defaultExpression);
-      this.app.avatarManager.setVisualStatus("Monitoring Chat", "listening");
+      this.app.avatarManager.setAvatarState('IDLE');
       return;
     }
     stepVal.className = 'done';
@@ -818,7 +949,7 @@ class ChatManager {
     // Mark source message as answered
     messageNode.classList.add('answered');
 
-    // Trigger Speech synthesis & wait until completed
+    // Trigger Speech synthesis & wait until completed (this handles TALKING/IDLE state changes)
     await this.app.ttsManager.generateSpeech(responseText, this.app.settings.language);
     stepTts.className = 'done';
 
@@ -1012,6 +1143,15 @@ class AppController {
     document.getElementById('setting-beh-delay').addEventListener('input', (e) => {
       document.getElementById('val-delay').textContent = `${parseFloat(e.target.value).toFixed(1)}s`;
     });
+
+    // Demo controls button clicks
+    const demoButtons = document.querySelectorAll('.demo-btn');
+    demoButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const state = btn.getAttribute('data-state');
+        this.avatarManager.setAvatarState(state);
+      });
+    });
   }
 
   async setLiveMode() {
@@ -1095,8 +1235,7 @@ class AppController {
     this.currentMode = 'AI_STOPPED';
     this.updateModeBadge();
     
-    this.avatarManager.setExpression('confused');
-    this.avatarManager.setVisualStatus("AI Disabled", "speaking");
+    this.avatarManager.setAvatarState('STOPPED');
 
     this.chatManager.appendSystemMessage("!!! Emergency Stop activated. All AI generations and Speech synthesis have been hard-terminated.");
   }

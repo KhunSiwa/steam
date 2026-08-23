@@ -146,88 +146,91 @@
             </defs>
             
             <g id="avatar-root-transform" transform="translate(0, 0)">
-              <!-- Headphone Band -->
-              <path id="headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
-              
-              <!-- Neck & Neckline -->
-              <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
-              <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
+              <!-- LAYER 1: BODY & CLOTHING -->
+              <g id="avatar-body">
+                <!-- Neck & Neckline (Binds with body breathing) -->
+                <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
+                <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
 
-              <!-- Face -->
-              <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#skin-gradient)" />
-              
-              <!-- Blushing cheeks -->
-              <ellipse id="blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-              <ellipse id="blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-
-              <!-- Eyebrows -->
-              <g id="eyebrows">
-                <path id="eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                <path id="eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-              </g>
-
-              <!-- Eyes (with Blink capability) -->
-              <g id="eyes">
-                <g id="eye-group-l" transform="translate(160, 172)">
-                  <ellipse id="eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                  <circle id="pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                </g>
-                <g id="eye-group-r" transform="translate(240, 172)">
-                  <ellipse id="eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                  <circle id="pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                <!-- Clothing (Dynamic) -->
+                <g id="clothing-layers">
+                  <!-- Cyberpunk Cyber-Jacket -->
+                  <path id="jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#clothing-neon)" />
+                  <!-- Collar -->
+                  <path id="jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
+                  
+                  <!-- Assistant Suit/Tie -->
+                  <g class="suit-element" opacity="0">
+                    <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#suit-gradient)" />
+                    <!-- Collared Shirt -->
+                    <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
+                    <!-- Tie -->
+                    <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
+                  </g>
                 </g>
               </g>
-              
-              <!-- Glasses (Toggleable style attribute) -->
-              <g id="glasses-element" class="glasses-element" opacity="0">
-                <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
-              </g>
 
-              <!-- Nose -->
-              <path id="nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
-
-              <!-- Mouth (Lipsync & Expression controlled path) -->
-              <path id="mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-
-              <!-- Headphones Caps -->
-              <g class="headphone-element">
-                <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-              </g>
-              
-              <!-- Hair Styles overlay -->
-              <!-- Cyberpunk/Retro/Assistant hair switch via class on parent svg -->
-              <g id="hair-group">
-                <!-- Hair Back layer -->
+              <!-- LAYER 2: HEAD & ACCESSORIES (Binds with head bobbing & rotation) -->
+              <g id="avatar-head">
+                <!-- Hair Back layer (Needs to move with head) -->
                 <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#hair-gradient-cyberpunk)" />
-                <!-- Hair Front layer -->
+
+                <!-- Headphone Band -->
+                <path id="headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
+                
+                <!-- Face -->
+                <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#skin-gradient)" />
+                
+                <!-- Blushing cheeks -->
+                <ellipse id="blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+                <ellipse id="blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+
+                <!-- Eyebrows -->
+                <g id="eyebrows">
+                  <path id="eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                  <path id="eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                </g>
+
+                <!-- Eyes (with transition classes for Blink) -->
+                <g id="eyes">
+                  <g id="eye-group-l" class="eye-blink-l" transform="translate(160, 172)">
+                    <ellipse id="eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                    <circle id="pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                  </g>
+                  <g id="eye-group-r" class="eye-blink-r" transform="translate(240, 172)">
+                    <ellipse id="eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                    <circle id="pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                  </g>
+                </g>
+                
+                <!-- Glasses (Toggleable style attribute) -->
+                <g id="glasses-element" class="glasses-element" opacity="0">
+                  <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                  <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                  <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
+                </g>
+
+                <!-- Nose -->
+                <path id="nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
+
+                <!-- Mouth (Lipsync & Expression controlled path) -->
+                <path id="mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+
+                <!-- Headphones Caps -->
+                <g class="headphone-element">
+                  <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                  <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                </g>
+                
+                <!-- Hair Front layers -->
                 <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#hair-gradient-cyberpunk)" />
                 <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#hair-gradient-cyberpunk)" />
-              </g>
 
-              <!-- Gaming Cap (Retro Accessory) -->
-              <g id="cap-element" class="cap-element" opacity="0">
-                <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
-                <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
-                <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
-              </g>
-
-              <!-- Clothing (Dynamic) -->
-              <g id="clothing">
-                <!-- Cyberpunk Cyber-Jacket -->
-                <path id="jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#clothing-neon)" />
-                <!-- Collar -->
-                <path id="jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
-                
-                <!-- Assistant Suit/Tie -->
-                <g class="suit-element" opacity="0">
-                  <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#suit-gradient)" />
-                  <!-- Collared Shirt -->
-                  <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
-                  <!-- Tie -->
-                  <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
+                <!-- Gaming Cap (Retro Accessory) -->
+                <g id="cap-element" class="cap-element" opacity="0">
+                  <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
+                  <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
+                  <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
                 </g>
               </g>
             </g>
@@ -238,6 +241,18 @@
         <div class="ai-speech-status-bar">
           <span class="status-indicator-dot" id="stage-status-dot"></span>
           <span id="stage-status-text">Ready</span>
+        </div>
+
+        <!-- DEV/DEMO ANIMATION STATE CONTROLS -->
+        <div class="avatar-demo-controls">
+          <button class="demo-btn active" data-state="IDLE">Idle</button>
+          <button class="demo-btn" data-state="TALKING">Talking</button>
+          <button class="demo-btn" data-state="HAPPY">Happy</button>
+          <button class="demo-btn" data-state="SURPRISED">Surprised</button>
+          <button class="demo-btn" data-state="THINKING">Thinking</button>
+          <button class="demo-btn" data-state="EXCITED">Excited</button>
+          <button class="demo-btn" data-state="CONFUSED">Confused</button>
+          <button class="demo-btn btn-stop" data-state="STOPPED">Stop</button>
         </div>
       </div>
     </section>

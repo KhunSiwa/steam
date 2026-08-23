@@ -51,15 +51,42 @@ body {
   100% { transform: scale(1.2); opacity: 0; }
 }
 
-@keyframes breathing {
-  0% { transform: translate(0, 0) scaleY(1); }
-  50% { transform: translate(0, 2px) scaleY(0.99); }
-  100% { transform: translate(0, 0) scaleY(1); }
+@keyframes floating {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
 }
 
-@keyframes blinking {
-  0%, 90%, 100% { transform: scaleY(1); }
-  95% { transform: scaleY(0.1); }
+@keyframes breathing {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.015); }
+}
+
+@keyframes headBob {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-0.8px) rotate(-0.6deg); }
+  50% { transform: translateY(-1.5px) rotate(0deg); }
+  75% { transform: translateY(-0.8px) rotate(0.4deg); }
+}
+
+@keyframes headBobTalking {
+  0% { transform: translateY(0px) rotate(-1.2deg); }
+  100% { transform: translateY(-2.2px) rotate(1.2deg); }
+}
+
+@keyframes breathingTalking {
+  0% { transform: scaleY(0.99); }
+  100% { transform: scaleY(1.01); }
+}
+
+@keyframes bounceOnce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes doubleBounce {
+  0%, 50%, 100% { transform: translateY(0px); }
+  25% { transform: translateY(-8px); }
+  75% { transform: translateY(-8px); }
 }
 
 /* LOADING OVERLAY */
@@ -530,16 +557,142 @@ body:not(.initializing) .loading-overlay {
 /* SVG AVATAR STATES & TRANSITIONS */
 #avatar-root-transform {
   transform-origin: 200px 300px;
+  animation: floating 4s ease-in-out infinite;
+}
+
+#avatar-body {
+  transform-origin: 200px 300px;
   animation: breathing 3s ease-in-out infinite;
 }
 
-#eye-l, #eye-r {
-  transform-origin: center;
-  animation: blinking 5s infinite;
+#avatar-head {
+  transform-origin: 200px 240px;
+  animation: headBob 3.5s ease-in-out infinite;
+}
+
+/* Eye Blinking */
+.eye-blink-l { transform-origin: 160px 172px; }
+.eye-blink-r { transform-origin: 240px 172px; }
+.blink-active {
+  animation: eyeBlinkAnim 0.12s ease-in-out;
+}
+
+@keyframes eyeBlinkAnim {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.05); }
+}
+
+/* Pupil Gliding & Mouth transitions */
+#pupil-l, #pupil-r {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #mouth {
-  transition: d 0.2s ease, transform 0.2s ease;
+  transition: d 0.08s ease-out;
+}
+
+/* State machine overrides */
+.state-talking #avatar-head {
+  animation: headBobTalking 0.8s ease-in-out infinite alternate;
+}
+
+.state-talking #avatar-body {
+  animation: breathingTalking 0.8s ease-in-out infinite alternate;
+}
+
+.state-happy #avatar-root-transform {
+  animation: bounceOnce 0.6s ease-out;
+}
+
+.state-excited #avatar-root-transform {
+  animation: doubleBounce 0.6s ease-out;
+}
+
+.state-surprised #avatar-head {
+  transform: translateY(2px) scale(0.96) rotate(-0.5deg);
+  transition: transform 0.15s ease-out;
+}
+
+.state-surprised #eyes {
+  transform: scale(1.1);
+  transform-origin: 200px 172px;
+  transition: transform 0.15s ease-out;
+}
+
+.state-thinking #avatar-head {
+  transform: rotate(3deg) translateY(-2px);
+  transition: transform 0.3s ease-out;
+}
+
+.state-confused #avatar-head {
+  transform: rotate(-4deg);
+  transition: transform 0.25s ease-out;
+}
+
+.state-stopped #avatar-root-transform,
+.state-stopped #avatar-head,
+.state-stopped #avatar-body {
+  animation: none !important;
+  transform: none !important;
+  transition: transform 0.5s ease-out;
+}
+
+/* DEVELOPER / DEMO CONTROL OVERLAY */
+.avatar-demo-controls {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  background-color: rgba(9, 13, 22, 0.8);
+  padding: 6px 12px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  max-width: 90%;
+  z-index: 30;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transition: opacity 0.3s ease;
+}
+
+.demo-btn {
+  background: none;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.demo-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: var(--border-focus);
+}
+
+.demo-btn.active {
+  background-color: var(--border-focus);
+  color: #fff;
+  border-color: var(--border-focus);
+}
+
+.demo-btn.btn-stop {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.demo-btn.btn-stop:hover {
+  background-color: var(--color-live);
+  color: #fff;
 }
 
 /* Avatar styling controls */
