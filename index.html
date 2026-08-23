@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stream Support - AI Streamer Companion</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="initializing">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="top-bar">
+    <div class="brand">
+      <img src="assets/logo.webp" alt="Stream Support Logo" class="app-logo">
+      <h1>Stream Support</h1>
+    </div>
+    
+    <div class="status-panel">
+      <div class="status-indicator" id="connection-status">
+        <span class="status-dot"></span>
+        <span class="status-text">Connected</span>
+      </div>
+      
+      <div class="mode-badge" id="current-mode-badge">
+        INITIALIZING
+      </div>
+      
+      <button class="icon-btn" id="settings-trigger" aria-label="Open Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- LOADING / INITIALIZING STATE OVERLAY -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Initializing Streaming Workspace...</p>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="studio-workspace">
+    
+    <!-- LEFT PANEL: LIVE PREVIEW -->
+    <section class="workspace-panel preview-panel" id="preview-section">
+      <div class="panel-header">
+        <h2>Live Preview</h2>
+        <div class="device-status-indicators">
+          <span class="indicator-badge inactive" id="cam-status-badge">CAM OFF</span>
+          <span class="indicator-badge inactive" id="mic-status-badge">MIC OFF</span>
+        </div>
+      </div>
+      
+      <div class="preview-container">
+        <!-- Live Video Element -->
+        <video id="camera-preview" autoplay playsinline muted></video>
+        
+        <!-- Video Feed Cover/Overlay when Inactive -->
+        <div class="video-overlay" id="video-placeholder">
+          <div class="overlay-icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 7l-7 5 7 5V7z"></path>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+            </svg>
+          </div>
+          <p id="video-placeholder-text">Camera Inactive</p>
+          <button class="action-btn" id="enable-devices-btn">Enable Camera & Mic</button>
+        </div>
+      </div>
+      
+      <!-- Audio Level Meter -->
+      <div class="audio-meter-container">
+        <label for="mic-meter-bar">Microphone Level</label>
+        <div class="meter-track">
+          <div class="meter-bar" id="mic-meter-bar" style="width: 0%;"></div>
+        </div>
+        <div class="meter-ticks">
+          <span>-40dB</span>
+          <span>-20dB</span>
+          <span>-10dB</span>
+          <span>0dB</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTER PANEL: AVATAR STAGE -->
+    <section class="workspace-panel stage-panel" id="stage-section">
+      <div class="panel-header">
+        <h2>Avatar Stage</h2>
+        <div class="presence-overlay" id="presence-badge">CREATOR PRESENT</div>
+      </div>
+      
+      <div class="stage-viewport" id="avatar-stage">
+        <!-- Dynamic overlay message for Away mode -->
+        <div class="away-broadcast-banner" id="away-banner">
+          <span class="away-label">CREATOR AWAY</span>
+          <span class="ai-active-pulse">AI ASSISTANT ACTIVE</span>
+        </div>
+
+        <!-- 2D SVG CUSTOMIZABLE AVATAR -->
+        <div class="avatar-scale-wrapper" id="avatar-wrapper">
+          <svg id="avatar-svg" class="style-cyberpunk" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Skin Gradients -->
+              <radialGradient id="skin-gradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffe4cc" />
+                <stop offset="100%" stop-color="#fca5a5" />
+              </radialGradient>
+              <!-- Hair Gradients -->
+              <linearGradient id="hair-gradient-cyberpunk" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#a855f7" />
+                <stop offset="100%" stop-color="#ec4899" />
+              </linearGradient>
+              <linearGradient id="hair-gradient-retro" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#facc15" />
+                <stop offset="100%" stop-color="#e11d48" />
+              </linearGradient>
+              <linearGradient id="hair-gradient-assistant" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#64748b" />
+                <stop offset="100%" stop-color="#1e293b" />
+              </linearGradient>
+              <!-- Clothing Gradients -->
+              <linearGradient id="suit-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#3b82f6" />
+                <stop offset="100%" stop-color="#1d4ed8" />
+              </linearGradient>
+              <linearGradient id="clothing-neon" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#06b6d4" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+              </linearGradient>
+              <linearGradient id="clothing-retro" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#f97316" />
+                <stop offset="100%" stop-color="#facc15" />
+              </linearGradient>
+              
+              <!-- Glow Filters -->
+              <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            
+            <g id="avatar-root-transform" transform="translate(0, 0)">
+              <!-- Headphone Band -->
+              <path id="headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
+              
+              <!-- Neck & Neckline -->
+              <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
+              <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
+
+              <!-- Face -->
+              <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#skin-gradient)" />
+              
+              <!-- Blushing cheeks -->
+              <ellipse id="blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+              <ellipse id="blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+
+              <!-- Eyebrows -->
+              <g id="eyebrows">
+                <path id="eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                <path id="eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+              </g>
+
+              <!-- Eyes (with Blink capability) -->
+              <g id="eyes">
+                <g id="eye-group-l" transform="translate(160, 172)">
+                  <ellipse id="eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                  <circle id="pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                </g>
+                <g id="eye-group-r" transform="translate(240, 172)">
+                  <ellipse id="eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                  <circle id="pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                </g>
+              </g>
+              
+              <!-- Glasses (Toggleable style attribute) -->
+              <g id="glasses-element" class="glasses-element" opacity="0">
+                <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
+              </g>
+
+              <!-- Nose -->
+              <path id="nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
+
+              <!-- Mouth (Lipsync & Expression controlled path) -->
+              <path id="mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+
+              <!-- Headphones Caps -->
+              <g class="headphone-element">
+                <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+              </g>
+              
+              <!-- Hair Styles overlay -->
+              <!-- Cyberpunk/Retro/Assistant hair switch via class on parent svg -->
+              <g id="hair-group">
+                <!-- Hair Back layer -->
+                <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#hair-gradient-cyberpunk)" />
+                <!-- Hair Front layer -->
+                <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#hair-gradient-cyberpunk)" />
+                <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#hair-gradient-cyberpunk)" />
+              </g>
+
+              <!-- Gaming Cap (Retro Accessory) -->
+              <g id="cap-element" class="cap-element" opacity="0">
+                <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
+                <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
+                <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
+              </g>
+
+              <!-- Clothing (Dynamic) -->
+              <g id="clothing">
+                <!-- Cyberpunk Cyber-Jacket -->
+                <path id="jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#clothing-neon)" />
+                <!-- Collar -->
+                <path id="jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
+                
+                <!-- Assistant Suit/Tie -->
+                <g class="suit-element" opacity="0">
+                  <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#suit-gradient)" />
+                  <!-- Collared Shirt -->
+                  <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
+                  <!-- Tie -->
+                  <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- AI Speaking Status and Pulse Rings -->
+        <div class="ai-speech-status-bar">
+          <span class="status-indicator-dot" id="stage-status-dot"></span>
+          <span id="stage-status-text">Ready</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: CHAT + AI ACTIVITY -->
+    <section class="workspace-panel chat-panel" id="chat-section">
+      <div class="panel-header">
+        <h2>Live Chat</h2>
+        <div class="chat-mode-badge" id="chat-monitor-status">MONITOR INACTIVE</div>
+      </div>
+      
+      <!-- Simulated Chat Messages Container -->
+      <div class="chat-log" id="chat-log">
+        <!-- Messages will be dynamically inserted here -->
+        <div class="chat-system-message">System: Chat simulator ready. Start LIVE or AWAY mode to run stream.</div>
+      </div>
+      
+      <!-- AI Thinking/Processing Indicator -->
+      <div class="ai-processing-box" id="ai-processing-panel" style="display: none;">
+        <div class="processing-header">
+          <div class="small-pulse"></div>
+          <span id="ai-pipeline-step">AI Assistant: Idle</span>
+        </div>
+        <div class="message-context" id="ai-target-message" style="display: none;">
+          <span class="context-label">Responding to:</span>
+          <p class="context-body">"Hello streamer!"</p>
+        </div>
+        <!-- Progress Steps -->
+        <ul class="pipeline-checklist">
+          <li id="step-mod" class="pending">Moderating message</li>
+          <li id="step-rel" class="pending">Checking relevance</li>
+          <li id="step-gen" class="pending">Generating persona response</li>
+          <li id="step-val" class="pending">Safety response validation</li>
+          <li id="step-tts" class="pending">Synthesizing audio & lip-sync</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- PERSISTENT CONTROL BAR -->
+  <footer class="control-bar">
+    <div class="control-group">
+      <!-- Media Toggles -->
+      <button class="control-btn" id="camera-toggle" aria-label="Toggle Camera">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"></path>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+        </svg>
+        <span>Camera</span>
+      </button>
+      
+      <button class="control-btn" id="mic-toggle" aria-label="Toggle Microphone">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+        <span>Microphone</span>
+      </button>
+
+      <button class="control-btn" id="mute-toggle" aria-label="Mute Stream">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <span>Mute Sound</span>
+      </button>
+    </div>
+
+    <!-- Mode Selectors -->
+    <div class="mode-selectors">
+      <button class="mode-btn" id="btn-mode-live">
+        <span class="pulse-indicator bg-red"></span>
+        LIVE MODE
+      </button>
+      <button class="mode-btn" id="btn-mode-away">
+        <span class="pulse-indicator bg-blue"></span>
+        AWAY MODE
+      </button>
+    </div>
+
+    <!-- Emergency Button -->
+    <div class="emergency-stop-container">
+      <button class="emergency-btn" id="emergency-stop" aria-label="Emergency Stop AI Activity">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+        </svg>
+        EMERGENCY STOP
+      </button>
+    </div>
+  </footer>
+
+  <!-- SETTINGS MODAL DIALOG -->
+  <!-- CSS styled, dismissing with Esc naturally or light-dismiss (closedby="any" progressive enhancement) -->
+  <dialog id="settings-dialog" class="settings-modal" closedby="any" aria-labelledby="settings-title">
+    <div class="settings-header">
+      <h2 id="settings-title">Creator Control Panel</h2>
+      <button class="close-modal-btn" id="settings-close" aria-label="Close Settings">&times;</button>
+    </div>
+    
+    <div class="settings-tabs">
+      <button class="tab-btn active" data-tab="tab-avatar">Avatar Configuration</button>
+      <button class="tab-btn" data-tab="tab-persona">AI Persona</button>
+      <button class="tab-btn" data-tab="tab-knowledge">Creator Knowledge</button>
+      <button class="tab-btn" data-tab="tab-behavior">AI Behavior</button>
+    </div>
+
+    <div class="settings-body">
+      
+      <!-- TAB: AVATAR CONFIG -->
+      <div class="tab-content active" id="tab-avatar">
+        <div class="form-row">
+          <label for="setting-avatar-style">Avatar Archetype</label>
+          <select id="setting-avatar-style">
+            <option value="cyberpunk">Cyberpunk Streamer (Neon Purple/Pink)</option>
+            <option value="retro">Retro Gamer (Cap, Orange/Yellow)</option>
+            <option value="assistant">Virtual Assistant (Grey/Blue Suit & Glasses)</option>
+          </select>
+        </div>
+        
+        <div class="form-row range-group">
+          <div class="range-field">
+            <label for="setting-avatar-scale">Avatar Scale: <span id="val-scale">100%</span></label>
+            <input type="range" id="setting-avatar-scale" min="50" max="150" value="100">
+          </div>
+          <div class="range-field">
+            <label for="setting-avatar-y">Vertical Offset: <span id="val-y">0px</span></label>
+            <input type="range" id="setting-avatar-y" min="-100" max="100" value="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="setting-avatar-expression">Default Expression</label>
+          <select id="setting-avatar-expression">
+            <option value="neutral">Neutral (Ready to Stream)</option>
+            <option value="happy">Happy (Engaged)</option>
+            <option value="surprised">Surprised (Excited)</option>
+            <option value="thinking">Thinking (Musing)</option>
+            <option value="confused">Confused (Dazed)</option>
+          </select>
+        </div>
+        
+        <div class="form-row checkbox-field">
+          <label for="setting-avatar-headset">Force Gaming Headset Overlay</label>
+          <input type="checkbox" id="setting-avatar-headset" checked>
+        </div>
+      </div>
+
+      <!-- TAB: AI PERSONA -->
+      <div class="tab-content" id="tab-persona">
+        <div class="form-row">
+          <label for="setting-ai-name">AI Assistant Name</label>
+          <input type="text" id="setting-ai-name" value="Aura">
+        </div>
+        
+        <div class="form-row">
+          <label for="setting-ai-personality">AI Personality Bio</label>
+          <textarea id="setting-ai-personality" rows="3">A witty, energetic, and extremely supportive AI companion. Interactive with the chat, loves gaming trivia, and keeps the stream hyped but never claims to be the real streamer.</textarea>
+        </div>
+
+        <div class="grid-2-col">
+          <div class="form-row">
+            <label for="setting-ai-tone">Tone</label>
+            <select id="setting-ai-tone">
+              <option value="friendly">Friendly</option>
+              <option value="casual" selected>Casual</option>
+              <option value="energetic">Energetic</option>
+              <option value="professional">Professional</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="setting-ai-length">Max Response Length</label>
+            <select id="setting-ai-length">
+              <option value="short" selected>Short (Max 15 words)</option>
+              <option value="medium">Medium (Max 30 words)</option>
+              <option value="long">Long (Max 50 words)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="setting-ai-language">Broadcast Language</label>
+          <select id="setting-ai-language">
+            <option value="en-US">English (US)</option>
+            <option value="th-TH">Thai (ภาษาไทย)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- TAB: CREATOR KNOWLEDGE -->
+      <div class="tab-content" id="tab-knowledge">
+        <div class="form-row">
+          <label for="setting-kn-creator">About the Creator</label>
+          <textarea id="setting-kn-creator" rows="2">Antigravity is a speedrunner who plays retro RPGs and roguelikes. Loves drinking coffee and chatting about game design.</textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="setting-kn-schedule">Stream Schedule</label>
+          <input type="text" id="setting-kn-schedule" value="Every Tuesday & Thursday at 8 PM, Saturday at 2 PM">
+        </div>
+
+        <div class="form-row">
+          <label for="setting-kn-faqs">Frequently Asked Questions (FAQ)</label>
+          <textarea id="setting-kn-faqs" rows="2">Q: Keyboard? A: Custom mechanical 65% with brown switches. Q: Favorite game? A: Hades and Chrono Trigger.</textarea>
+        </div>
+
+        <div class="grid-2-col">
+          <div class="form-row">
+            <label for="setting-kn-allowed">Allowed/Desired Topics</label>
+            <input type="text" id="setting-kn-allowed" value="gaming, coffee, speedruns, mechanics, schedule, mechanical keyboards">
+          </div>
+          <div class="form-row">
+            <label for="setting-kn-forbidden">Forbidden Topics</label>
+            <input type="text" id="setting-kn-forbidden" value="politics, religious debates, financial advice, direct streamer impersonation">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: AI BEHAVIOR -->
+      <div class="tab-content" id="tab-behavior">
+        <div class="form-row range-group">
+          <div class="range-field">
+            <label for="setting-beh-frequency">Response Frequency: <span id="val-frequency">70%</span></label>
+            <input type="range" id="setting-beh-frequency" min="10" max="100" step="5" value="70">
+            <small>Chance of answering a qualifying chat message.</small>
+          </div>
+          <div class="range-field">
+            <label for="setting-beh-delay">Response Delay: <span id="val-delay">2.0s</span></label>
+            <input type="range" id="setting-beh-delay" min="0.5" max="6.0" step="0.5" value="2.0">
+            <small>Simulated thinking and pipeline check buffer.</small>
+          </div>
+        </div>
+
+        <div class="form-row checkbox-field">
+          <label for="setting-beh-auto">Enable Automatic AI Chat Replies</label>
+          <input type="checkbox" id="setting-beh-auto" checked>
+        </div>
+
+        <div class="form-row checkbox-field">
+          <label for="setting-beh-read">AI Chat Reading (Monitor Feed)</label>
+          <input type="checkbox" id="setting-beh-read" checked>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="settings-footer">
+      <button class="action-btn secondary" id="settings-reset">Reset Defaults</button>
+      <button class="action-btn" id="settings-save">Apply Settings</button>
+    </div>
+  </dialog>
+
+  <!-- Core JavaScript Module -->
+  <script src="main.js"></script>
+</body>
+</html>
