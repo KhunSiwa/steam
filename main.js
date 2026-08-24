@@ -23,7 +23,7 @@ class AppController {
     
     // We instantiate AvatarEngine, CameraSystem, MicrophoneSystem, TTS, and Chat
     // but they will bind to specific DOM nodes during mount() depending on the view.
-    this.avatarEngine = new AvatarEngine('desktop-avatar-svg', 'desktop-avatar-wrapper');
+    this.avatarEngine = new AvatarEngine('desktop-avatar-wrapper');
     this.cameraSystem = new CameraSystem('desktop-video-el');
     this.microphoneSystem = new MicrophoneSystem();
     this.ttsSystem = new TTSSystem(this.stateManager, this.avatarEngine);
@@ -45,6 +45,8 @@ class AppController {
     
     // active view flags
     this.activeWorkspace = null; // 'computer' or 'phone'
+    this.faceMesh = null;
+    this.trackingLoopActive = false;
     
     // Bind global state notifiers
     this.stateManager.on('deviceTypeChanged', (type) => this.handleWorkspaceRoute(type));
@@ -52,6 +54,9 @@ class AppController {
     this.stateManager.on('connectionChanged', (connected) => this.updateConnectionStatus(connected));
     this.stateManager.on('settingsChanged', (settings) => this.applySettingsUpdates(settings));
     this.stateManager.on('devicesUpdated', (devices) => this.renderHardwareList(devices));
+    
+    // Setup MediaPipe FaceMesh
+    this.initFaceMesh();
   }
 
   async init() {
@@ -99,7 +104,6 @@ class AppController {
       document.getElementById('phone-interface').style.display = 'none';
       
       // Mount Computer specific DOM nodes
-      this.avatarEngine.svgId = 'desktop-avatar-svg';
       this.avatarEngine.wrapperId = 'desktop-avatar-wrapper';
       this.cameraSystem.videoElementId = 'desktop-video-el';
       
@@ -112,7 +116,6 @@ class AppController {
       document.getElementById('phone-interface').style.display = 'flex';
       
       // Mount Phone specific DOM nodes
-      this.avatarEngine.svgId = 'mobile-avatar-svg';
       this.avatarEngine.wrapperId = 'mobile-avatar-wrapper';
       this.cameraSystem.videoElementId = 'mobile-video-el';
       
@@ -214,6 +217,8 @@ class AppController {
       document.getElementById('val-delay').textContent = `${parseFloat(e.target.value).toFixed(1)}s`;
     });
 
+    this.bindAvatarControls('desktop');
+
     // Back to Selection
     document.getElementById('desktop-back-btn').addEventListener('click', () => this.exitWorkspace());
   }
@@ -263,23 +268,7 @@ class AppController {
       document.getElementById('mobile-gain-value').textContent = `${val.toFixed(1)}x`;
     });
 
-    document.getElementById('mobile-avatar-style').addEventListener('change', (e) => {
-      this.stateManager.updateSettings({ archetype: e.target.value });
-    });
-
-    document.getElementById('mobile-avatar-scale').addEventListener('input', (e) => {
-      this.stateManager.updateSettings({ scale: parseFloat(e.target.value) / 100 });
-    });
-
-    document.getElementById('mobile-save-settings').addEventListener('click', () => {
-      const newSettings = {
-        aiName: document.getElementById('mobile-setting-name').value,
-        tone: document.getElementById('mobile-setting-tone').value,
-        language: document.getElementById('mobile-setting-lang').value
-      };
-      this.stateManager.updateSettings(newSettings);
-      alert("Mobile settings applied.");
-    });
+    this.bindAvatarControls('mobile');
 
     // Back to Selection
     document.getElementById('mobile-back-btn').addEventListener('click', () => this.exitWorkspace());
@@ -308,6 +297,10 @@ class AppController {
           if (placeholder) placeholder.classList.add('hidden');
           
           document.getElementById('desktop-control-cam')?.classList.add('active');
+
+          if (this.avatarEngine.mode === 'tracking') {
+            this.runFaceMeshLoop();
+          }
         }
       }
     }
@@ -329,6 +322,10 @@ class AppController {
         const levelUpdateHandler = (vol) => {
           const meter = document.getElementById(`${this.activeWorkspace}-mic-meter`);
           if (meter) meter.style.width = `${vol}%`;
+          
+          if (this.avatarEngine && this.avatarEngine.mode === 'tracking') {
+            this.avatarEngine.isSpeaking = vol > 12; // 12% speaking threshold
+          }
         };
         const connected = await this.microphoneSystem.connectMicrophone(null, levelUpdateHandler);
         if (connected) {
@@ -588,6 +585,106 @@ class AppController {
     document.getElementById('device-selection-screen').style.display = 'flex';
     document.getElementById('computer-interface').style.display = 'none';
     document.getElementById('phone-interface').style.display = 'none';
+  }
+
+  initFaceMesh() {
+    try {
+      if (typeof FaceMesh !== 'undefined') {
+        this.faceMesh = new FaceMesh({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+        
+        this.faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        
+        this.faceMesh.onResults((results) => {
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            this.avatarEngine.updateFaceMesh(results.multiFaceLandmarks[0]);
+          }
+        });
+        
+        console.log("MediaPipe FaceMesh initialised.");
+      } else {
+        console.warn("MediaPipe FaceMesh library not loaded. Face tracking fallback to Manual Mode.");
+      }
+    } catch (e) {
+      console.warn("MediaPipe FaceMesh initialization failed: ", e);
+    }
+  }
+
+  runFaceMeshLoop() {
+    if (!this.cameraSystem.cameraEnabled || this.avatarEngine.mode !== 'tracking') {
+      this.trackingLoopActive = false;
+      return;
+    }
+    
+    this.trackingLoopActive = true;
+    const videoEl = document.getElementById(this.cameraSystem.videoElementId);
+    
+    if (videoEl && videoEl.readyState >= 2 && this.faceMesh) {
+      this.faceMesh.send({ image: videoEl }).catch(err => {
+        console.warn("FaceMesh send error: ", err);
+      });
+    }
+    
+    requestAnimationFrame(() => this.runFaceMeshLoop());
+  }
+
+  bindAvatarControls(prefix) {
+    const btnManual = document.getElementById(`${prefix}-mode-manual`);
+    const btnTracking = document.getElementById(`${prefix}-mode-tracking`);
+    
+    if (btnManual && btnTracking) {
+      btnManual.addEventListener('click', () => {
+        this.avatarEngine.setMode('manual');
+        
+        // Sync other workspace view mode
+        const other = prefix === 'desktop' ? 'mobile' : 'desktop';
+        const otherBtnManual = document.getElementById(`${other}-mode-manual`);
+        if (otherBtnManual) {
+          otherBtnManual.classList.add('active');
+          document.getElementById(`${other}-mode-tracking`)?.classList.remove('active');
+        }
+      });
+      
+      btnTracking.addEventListener('click', () => {
+        this.avatarEngine.setMode('tracking');
+        if (this.cameraSystem.cameraEnabled) {
+          this.runFaceMeshLoop();
+        }
+        
+        // Sync other workspace view mode
+        const other = prefix === 'desktop' ? 'mobile' : 'desktop';
+        const otherBtnTracking = document.getElementById(`${other}-mode-tracking`);
+        if (otherBtnTracking) {
+          otherBtnTracking.classList.add('active');
+          document.getElementById(`${other}-mode-manual`)?.classList.remove('active');
+        }
+      });
+    }
+    
+    const exprButtons = document.querySelectorAll(`#${prefix}-expression-panel .expr-btn`);
+    exprButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const expr = e.currentTarget.getAttribute('data-expr');
+        this.avatarEngine.setOverrideExpression(expr);
+        
+        // Sync the other prefix panel buttons
+        const other = prefix === 'desktop' ? 'mobile' : 'desktop';
+        const otherButtons = document.querySelectorAll(`#${other}-expression-panel .expr-btn`);
+        otherButtons.forEach(otherBtn => {
+          if (otherBtn.getAttribute('data-expr') === expr) {
+            otherBtn.classList.add('active');
+          } else {
+            otherBtn.classList.remove('active');
+          }
+        });
+      });
+    });
   }
 }
 

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Streamer Support - Hardware Companion Platform</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- MediaPipe CDN Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 </head>
 <body class="view-selection">
 
@@ -173,93 +176,10 @@
 
           <!-- SVG avatar layer (Overlay) -->
           <div class="avatar-scale-wrapper" id="desktop-avatar-wrapper">
-            <!-- SVG placeholder for injection or inline definition -->
-            <svg id="desktop-avatar-svg" class="style-cyberpunk" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <radialGradient id="d-skin-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#ffe4cc" />
-                  <stop offset="100%" stop-color="#fca5a5" />
-                </radialGradient>
-                <linearGradient id="d-hair-gradient-cyberpunk" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#a855f7" />
-                  <stop offset="100%" stop-color="#ec4899" />
-                </linearGradient>
-                <linearGradient id="d-hair-gradient-retro" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#facc15" />
-                  <stop offset="100%" stop-color="#e11d48" />
-                </linearGradient>
-                <linearGradient id="d-hair-gradient-assistant" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#64748b" />
-                  <stop offset="100%" stop-color="#1e293b" />
-                </linearGradient>
-                <linearGradient id="d-clothing-neon" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#06b6d4" />
-                  <stop offset="100%" stop-color="#8b5cf6" />
-                </linearGradient>
-                <linearGradient id="d-clothing-retro" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#f97316" />
-                  <stop offset="100%" stop-color="#facc15" />
-                </linearGradient>
-                <linearGradient id="d-suit-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color="#3b82f6" />
-                  <stop offset="100%" stop-color="#1d4ed8" />
-                </linearGradient>
-              </defs>
-              <g id="avatar-root-transform">
-                <g id="avatar-body">
-                  <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
-                  <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
-                  <g id="clothing-layers">
-                    <path id="jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#d-clothing-neon)" />
-                    <path id="jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
-                    <g class="suit-element" opacity="0">
-                      <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#d-suit-gradient)" />
-                      <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
-                      <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
-                    </g>
-                  </g>
-                </g>
-                <g id="avatar-head">
-                  <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#d-hair-gradient-cyberpunk)" />
-                  <path id="headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
-                  <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#d-skin-gradient)" />
-                  <ellipse id="blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-                  <ellipse id="blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-                  <g id="eyebrows">
-                    <path id="eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                    <path id="eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                  </g>
-                  <g id="eyes">
-                    <g id="eye-group-l" class="eye-blink-l" transform="translate(160, 172)">
-                      <ellipse id="eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                      <circle id="pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                    </g>
-                    <g id="eye-group-r" class="eye-blink-r" transform="translate(240, 172)">
-                      <ellipse id="eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                      <circle id="pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                    </g>
-                  </g>
-                  <g id="glasses-element" class="glasses-element" opacity="0">
-                    <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                    <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                    <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
-                  </g>
-                  <path id="nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
-                  <path id="mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                  <g class="headphone-element">
-                    <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                    <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                  </g>
-                  <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#d-hair-gradient-cyberpunk)" />
-                  <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#d-hair-gradient-cyberpunk)" />
-                  <g id="cap-element" class="cap-element" opacity="0">
-                    <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
-                    <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
-                    <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
-                  </g>
-                </g>
-              </g>
-            </svg>
+            <div class="avatar-stage-container">
+              <img id="desktop-avatar-img-back" class="avatar-img back" src="public/avatar/avatar-idle.png" alt="Avatar Back">
+              <img id="desktop-avatar-img-front" class="avatar-img front" src="public/avatar/avatar-idle.png" alt="Avatar Front">
+            </div>
           </div>
 
           <!-- AI Activity Indicator Status overlay -->
@@ -268,16 +188,29 @@
             <span id="desktop-avatar-status-text">Ready</span>
           </div>
 
-          <!-- Developer controls on stage -->
-          <div class="avatar-demo-controls">
-            <button class="demo-btn active" data-state="IDLE">Idle</button>
-            <button class="demo-btn" data-state="TALKING">Talking</button>
-            <button class="demo-btn" data-state="HAPPY">Happy</button>
-            <button class="demo-btn" data-state="SAD">Sad</button>
-            <button class="demo-btn" data-state="SURPRISED">Surprised</button>
-            <button class="demo-btn" data-state="ANGRY">Angry</button>
-            <button class="demo-btn" data-state="THINKING">Thinking</button>
-            <button class="demo-btn btn-stop" data-state="STOPPED">Stop</button>
+          <!-- Avatar Mode Controls -->
+          <div class="avatar-mode-control-bar">
+            <span class="avatar-mode-label" id="desktop-avatar-mode-text">● MANUAL CONTROL</span>
+            <div class="avatar-mode-switch">
+              <button class="mode-select-btn active" id="desktop-mode-manual">MANUAL</button>
+              <button class="mode-select-btn" id="desktop-mode-tracking">CAMERA TRACKING</button>
+            </div>
+          </div>
+
+          <!-- Avatar Manual Expressions Panel -->
+          <div class="avatar-expression-panel" id="desktop-expression-panel">
+            <button class="expr-btn active" data-expr="idle">Idle</button>
+            <button class="expr-btn" data-expr="happy">Happy</button>
+            <button class="expr-btn" data-expr="talking">Talking</button>
+            <button class="expr-btn" data-expr="surprised">Surprised</button>
+            <button class="expr-btn" data-expr="thinking">Thinking</button>
+            <button class="expr-btn" data-expr="wink">Wink</button>
+            <button class="expr-btn" data-expr="excited">Excited</button>
+            <button class="expr-btn" data-expr="confused">Confused</button>
+            <button class="expr-btn" data-expr="sad">Sad</button>
+            <button class="expr-btn" data-expr="angry">Angry</button>
+            <button class="expr-btn" data-expr="laugh">Laugh</button>
+            <button class="expr-btn" data-expr="wave">Wave</button>
           </div>
         </div>
       </section>
@@ -409,65 +342,10 @@
 
           <div class="mobile-avatar-preview">
             <div class="avatar-scale-wrapper" id="mobile-avatar-wrapper">
-              <!-- Re-use or inject same SVG node for Mobile -->
-              <svg id="mobile-avatar-svg" class="style-cyberpunk" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <!-- Defs identical -->
-                <use href="#d-skin-gradient"></use>
-                <g id="m-avatar-root-transform" transform="translate(0, 0)">
-                  <g id="m-avatar-body">
-                    <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
-                    <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
-                    <g id="m-clothing-layers">
-                      <path id="m-jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#d-clothing-neon)" />
-                      <path id="m-jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
-                      <g class="suit-element" opacity="0">
-                        <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#d-suit-gradient)" />
-                        <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
-                        <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
-                      </g>
-                    </g>
-                  </g>
-                  <g id="m-avatar-head">
-                    <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#d-hair-gradient-cyberpunk)" />
-                    <path id="m-headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
-                    <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#d-skin-gradient)" />
-                    <ellipse id="m-blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-                    <ellipse id="m-blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-                    <g id="m-eyebrows">
-                      <path id="m-eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                      <path id="m-eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                    </g>
-                    <g id="m-eyes">
-                      <g id="m-eye-group-l" class="eye-blink-l" transform="translate(160, 172)">
-                        <ellipse id="m-eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                        <circle id="m-pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                      </g>
-                      <g id="m-eye-group-r" class="eye-blink-r" transform="translate(240, 172)">
-                        <ellipse id="m-eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                        <circle id="m-pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                      </g>
-                    </g>
-                    <g id="m-glasses-element" class="glasses-element" opacity="0">
-                      <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                      <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                      <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
-                    </g>
-                    <path id="m-nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
-                    <path id="m-mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                    <g class="headphone-element">
-                      <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                      <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                    </g>
-                    <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#d-hair-gradient-cyberpunk)" />
-                    <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#d-hair-gradient-cyberpunk)" />
-                    <g id="m-cap-element" class="cap-element" opacity="0">
-                      <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
-                      <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
-                      <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
-                    </g>
-                  </g>
-                </g>
-              </svg>
+              <div class="avatar-stage-container">
+                <img id="mobile-avatar-img-back" class="avatar-img back" src="public/avatar/avatar-idle.png" alt="Avatar Back">
+                <img id="mobile-avatar-img-front" class="avatar-img front" src="public/avatar/avatar-idle.png" alt="Avatar Front">
+              </div>
             </div>
             <div class="mobile-avatar-broadcast" id="mobile-away-banner">
               <span class="badge-away">AWAY — AI RESPONDING</span>
@@ -555,18 +433,30 @@
       <!-- TAB CONTENT: AVATAR -->
       <div class="mobile-tab-panel" id="m-tab-avatar">
         <div class="mobile-card">
-          <h3>Avatar customization</h3>
+          <h3>Avatar Mode</h3>
           <div class="form-row">
-            <label for="mobile-avatar-style">Style Archetype</label>
-            <select id="mobile-avatar-style">
-              <option value="cyberpunk">Cyberpunk Streamer</option>
-              <option value="retro">Retro Gamer</option>
-              <option value="assistant">Virtual Assistant</option>
-            </select>
+            <div class="avatar-mode-selector" style="display: flex; gap: 8px; margin-top: 6px;">
+              <button class="mode-select-btn active" id="mobile-mode-manual" style="flex: 1; padding: 10px;">MANUAL</button>
+              <button class="mode-select-btn" id="mobile-mode-tracking" style="flex: 1; padding: 10px;">TRACKING</button>
+            </div>
           </div>
-          <div class="form-row range-field">
-            <label for="mobile-avatar-scale">Mascot Scale</label>
-            <input type="range" id="mobile-avatar-scale" min="50" max="150" value="100">
+        </div>
+
+        <div class="mobile-card" style="margin-top: 12px;">
+          <h4>Expression Controls</h4>
+          <div class="avatar-expression-panel" id="mobile-expression-panel" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+            <button class="expr-btn active" data-expr="idle">Idle</button>
+            <button class="expr-btn" data-expr="happy">Happy</button>
+            <button class="expr-btn" data-expr="talking">Talking</button>
+            <button class="expr-btn" data-expr="surprised">Surprised</button>
+            <button class="expr-btn" data-expr="thinking">Thinking</button>
+            <button class="expr-btn" data-expr="wink">Wink</button>
+            <button class="expr-btn" data-expr="excited">Excited</button>
+            <button class="expr-btn" data-expr="confused">Confused</button>
+            <button class="expr-btn" data-expr="sad">Sad</button>
+            <button class="expr-btn" data-expr="angry">Angry</button>
+            <button class="expr-btn" data-expr="laugh">Laugh</button>
+            <button class="expr-btn" data-expr="wave">Wave</button>
           </div>
         </div>
       </div>

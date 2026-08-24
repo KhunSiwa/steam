@@ -635,15 +635,48 @@ body.view-phone #phone-interface { display: flex !important; }
 }
 
 /* AVATAR SYSTEM */
+/* AVATAR SYSTEM */
 .avatar-scale-wrapper {
-  width: 280px;
-  height: 280px;
+  width: 340px;
+  height: 340px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
   z-index: 10;
-  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+}
+
+.avatar-stage-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: bottom center;
+  transition: transform 0.15s ease-out;
+}
+
+.avatar-stage-container.idle-animating {
+  animation: floating 4.5s ease-in-out infinite;
+}
+
+.avatar-img {
+  position: absolute;
+  max-width: 95%;
+  max-height: 95%;
+  object-fit: contain;
+  bottom: 5px;
+  opacity: 0;
+  transform-origin: center 75%;
+  transition: opacity 0.2s ease-in-out;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
+}
+
+.avatar-img.active {
+  opacity: 1;
+  z-index: 2;
 }
 
 .ai-speech-status-bar {
@@ -684,217 +717,129 @@ body.view-phone #phone-interface { display: flex !important; }
   animation: pulse-live 0.4s infinite;
 }
 
-/* ==========================================
-     D. SVG AVATAR KEYFRAMES & MOTIONS
-     ========================================== */
-#avatar-root-transform, #m-avatar-root-transform {
-  transform-origin: 200px 300px;
-  animation: floating 4s ease-in-out infinite;
+/* AVATAR MODE CONTROLS OVERLAY */
+.avatar-mode-control-bar {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 30;
+  pointer-events: auto;
 }
 
-#avatar-body, #m-avatar-body {
-  transform-origin: 200px 300px;
-  animation: breathing 3s ease-in-out infinite;
+.avatar-mode-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--color-success);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-#avatar-head, #m-avatar-head {
-  transform-origin: 200px 240px;
-  animation: headBob 3.5s ease-in-out infinite;
+.avatar-mode-label::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
 }
 
-/* Eye Blinking */
-.eye-blink-l { transform-origin: 160px 172px; }
-.eye-blink-r { transform-origin: 240px 172px; }
-.blink-active {
-  animation: eyeBlinkAnim 0.12s ease-in-out;
+.avatar-mode-control-bar.tracking-active .avatar-mode-label {
+  color: var(--color-away);
 }
 
-@keyframes eyeBlinkAnim {
-  0%, 100% { transform: scaleY(1); }
-  50% { transform: scaleY(0.05); }
+.avatar-mode-switch {
+  display: flex;
+  gap: 6px;
+  background-color: rgba(9, 13, 22, 0.9);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(6px);
 }
 
-/* Pupil Gliding & Mouth transitions */
-#pupil-l, #pupil-r, #m-pupil-l, #m-pupil-r {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+.mode-select-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
 }
 
-#mouth, #m-mouth {
-  transition: d 0.08s ease-out;
+.mode-select-btn:hover {
+  color: #fff;
 }
 
-/* State machine overrides */
-.state-talking #avatar-head, .state-talking #m-avatar-head {
-  animation: headBobTalking 0.8s ease-in-out infinite alternate;
+.mode-select-btn.active {
+  background-color: var(--border-focus);
+  color: #fff;
 }
 
-.state-talking #avatar-body, .state-talking #m-avatar-body {
-  animation: breathingTalking 0.8s ease-in-out infinite alternate;
-}
-
-.state-happy #avatar-root-transform, .state-happy #m-avatar-root-transform {
-  animation: bounceOnce 0.6s ease-out;
-}
-
-.state-excited #avatar-root-transform, .state-excited #m-avatar-root-transform {
-  animation: doubleBounce 0.6s ease-out;
-}
-
-.state-surprised #avatar-head, .state-surprised #m-avatar-head {
-  transform: translateY(2px) scale(0.96) rotate(-0.5deg);
-  transition: transform 0.15s ease-out;
-}
-
-.state-surprised #eyes, .state-surprised #m-eyes {
-  transform: scale(1.1);
-  transform-origin: 200px 172px;
-  transition: transform 0.15s ease-out;
-}
-
-.state-thinking #avatar-head, .state-thinking #m-avatar-head {
-  transform: rotate(3deg) translateY(-2px);
-  transition: transform 0.3s ease-out;
-}
-
-.state-confused #avatar-head, .state-confused #m-avatar-head {
-  transform: rotate(-4deg);
-  transition: transform 0.25s ease-out;
-}
-
-.state-sad #avatar-head, .state-sad #m-avatar-head {
-  transform: translateY(2px) rotate(1deg);
-  transition: transform 0.3s ease-out;
-}
-
-.state-angry #avatar-head, .state-angry #m-avatar-head {
-  transform: translateY(-1px) rotate(-1.5deg);
-  transition: transform 0.2s ease-out;
-}
-
-.state-ai_response #avatar-root-transform, .state-ai_response #m-avatar-root-transform {
-  animation: bounceOnce 0.8s ease-out;
-}
-
-.state-stopped #avatar-root-transform,
-.state-stopped #avatar-head,
-.state-stopped #avatar-body,
-.state-stopped #m-avatar-root-transform,
-.state-stopped #m-avatar-head,
-.state-stopped #m-avatar-body {
-  animation: none !important;
-  transform: none !important;
-  transition: transform 0.5s ease-out;
-}
-
-/* DEV/DEMO OVERLAY STATE TRIGGER BUTTONS */
-.avatar-demo-controls {
+/* AVATAR MANUAL EXPRESSION GRIDS */
+.avatar-expression-panel {
   position: absolute;
   bottom: 48px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 6px;
-  background-color: rgba(9, 13, 22, 0.8);
-  padding: 6px 12px;
-  border-radius: 20px;
+  background-color: rgba(9, 13, 22, 0.85);
+  padding: 8px 12px;
+  border-radius: 16px;
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
-  max-width: 90%;
+  width: 90%;
+  max-width: 480px;
   z-index: 30;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   pointer-events: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transition: opacity 0.3s, transform 0.3s;
 }
 
-.demo-btn {
+.avatar-expression-panel.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  transform: translate(-50%, 4px) scale(0.98);
+}
+
+.expr-btn {
   background: none;
   background-color: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.6rem;
+  padding: 6px 2px;
+  border-radius: 8px;
+  font-size: 0.65rem;
   font-weight: 700;
   cursor: pointer;
-  text-transform: uppercase;
-  transition: all 0.2s ease;
+  text-align: center;
+  transition: all 0.15s;
+  text-transform: capitalize;
 }
 
-.demo-btn:hover {
+.expr-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: #fff;
   border-color: var(--border-focus);
 }
 
-.demo-btn.active {
+.expr-btn.active {
   background-color: var(--border-focus);
   color: #fff;
   border-color: var(--border-focus);
-}
-
-.demo-btn.btn-stop {
-  background-color: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #fca5a5;
-}
-
-.demo-btn.btn-stop:hover {
-  background-color: var(--color-live);
-  color: #fff;
-}
-
-/* Avatar styling archetype layers toggle */
-#desktop-avatar-svg.style-cyberpunk .jacket-element, 
-#desktop-avatar-svg.style-cyberpunk .headphone-element,
-#mobile-avatar-svg.style-cyberpunk .jacket-element,
-#mobile-avatar-svg.style-cyberpunk .headphone-element { opacity: 1; }
-
-#desktop-avatar-svg.style-cyberpunk .suit-element, 
-#desktop-avatar-svg.style-cyberpunk .glasses-element, 
-#desktop-avatar-svg.style-cyberpunk .cap-element,
-#mobile-avatar-svg.style-cyberpunk .suit-element,
-#mobile-avatar-svg.style-cyberpunk .glasses-element,
-#mobile-avatar-svg.style-cyberpunk .cap-element { opacity: 0; pointer-events: none;}
-
-#desktop-avatar-svg.style-retro .jacket-element,
-#mobile-avatar-svg.style-retro .jacket-element { opacity: 1; fill: url(#d-clothing-retro); }
-#desktop-avatar-svg.style-retro .headphone-element,
-#mobile-avatar-svg.style-retro .headphone-element { opacity: 1; }
-#desktop-avatar-svg.style-retro .suit-element,
-#mobile-avatar-svg.style-retro .suit-element { opacity: 0; pointer-events: none;}
-#desktop-avatar-svg.style-retro .glasses-element,
-#mobile-avatar-svg.style-retro .glasses-element { opacity: 0; pointer-events: none;}
-#desktop-avatar-svg.style-retro .cap-element,
-#mobile-avatar-svg.style-retro .cap-element { opacity: 1; }
-#desktop-avatar-svg.style-retro .hair-bg,
-#desktop-avatar-svg.style-retro .hair-fg,
-#desktop-avatar-svg.style-retro .hair-bangs,
-#mobile-avatar-svg.style-retro .hair-bg,
-#mobile-avatar-svg.style-retro .hair-fg,
-#mobile-avatar-svg.style-retro .hair-bangs { fill: url(#d-hair-gradient-retro); }
-
-#desktop-avatar-svg.style-assistant .jacket-element,
-#mobile-avatar-svg.style-assistant .jacket-element { opacity: 0; pointer-events: none; }
-#desktop-avatar-svg.style-assistant .headphone-element,
-#mobile-avatar-svg.style-assistant .headphone-element { opacity: 0; pointer-events: none; }
-#desktop-avatar-svg.style-assistant .suit-element,
-#mobile-avatar-svg.style-assistant .suit-element { opacity: 1; }
-#desktop-avatar-svg.style-assistant .glasses-element,
-#mobile-avatar-svg.style-assistant .glasses-element { opacity: 1; }
-#desktop-avatar-svg.style-assistant .cap-element,
-#mobile-avatar-svg.style-assistant .cap-element { opacity: 0; pointer-events: none;}
-#desktop-avatar-svg.style-assistant .hair-bg,
-#desktop-avatar-svg.style-assistant .hair-fg,
-#desktop-avatar-svg.style-assistant .hair-bangs,
-#mobile-avatar-svg.style-assistant .hair-bg,
-#mobile-avatar-svg.style-assistant .hair-fg,
-#mobile-avatar-svg.style-assistant .hair-bangs { fill: url(#d-hair-gradient-assistant); }
-
-#desktop-avatar-svg.hide-headsets .headphone-element,
-#mobile-avatar-svg.hide-headsets .headphone-element {
-  opacity: 0 !important;
-  pointer-events: none;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
 }
 
 /* ==========================================

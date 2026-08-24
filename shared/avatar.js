@@ -1,11 +1,10 @@
 /**
- * Streamer Support - Shared Avatar Engine
+ * Streamer Support - Shared Avatar Engine (Image & Face Tracking Upgraded)
  */
 
 export const AvatarStates = {
   IDLE: 'IDLE',
   TALKING: 'TALKING',
-  BLINK: 'BLINK',
   HAPPY: 'HAPPY',
   SAD: 'SAD',
   SURPRISED: 'SURPRISED',
@@ -15,320 +14,344 @@ export const AvatarStates = {
   STOPPED: 'STOPPED'
 };
 
+const lerp = (start, end, amt) => (1 - amt) * start + amt * end;
+
 export class AvatarEngine {
   constructor(svgId, wrapperId) {
-    this.svg = null;
+    // Keep parameters for backward compatibility in main.js
+    this.wrapperId = wrapperId || svgId;
     this.wrapper = null;
-    this.mouth = null;
-    this.eyebrowL = null;
-    this.eyebrowR = null;
-    this.svgId = svgId;
-    this.wrapperId = wrapperId;
+    this.container = null;
+    this.imgFront = null;
+    this.imgBack = null;
     
     this.currentState = AvatarStates.IDLE;
-    this.defaultExpression = 'neutral';
+    this.mode = 'manual'; // 'manual' or 'tracking'
+    
+    // Face tracking target coordinates
+    this.targetYaw = 0;
+    this.targetPitch = 0;
+    this.targetRoll = 0;
+    this.targetX = 0;
+    this.targetY = 0;
+    
+    // Interpolated smoothed values
+    this.smoothedYaw = 0;
+    this.smoothedPitch = 0;
+    this.smoothedRoll = 0;
+    this.smoothedX = 0;
+    this.smoothedY = 0;
+    
+    this.isBlinking = false;
     this.isSpeaking = false;
+    this.overrideExpression = null;
+    this.overrideTimeout = null;
     
-    // Animation loops
-    this.blinkTimeout = null;
-    this.lookTimeout = null;
-    this.reactionTimeout = null;
-    this.speechTimeout = null;
+    // Loop frames
+    this.frameId = null;
+    this.blinkLoopTimeout = null;
     
-    // Pre-calculated paths for mouth and eyebrows
-    this.mouthPaths = {
-      neutral: "M 182 215 Q 200 222 218 215",
-      happy: "M 182 215 Q 200 236 218 215 Z",
-      sad: "M 182 222 Q 200 212 218 222",
-      surprised: "M 192 218 A 8 8 0 1 1 208 218 A 8 8 0 1 1 192 218",
-      angry: "M 185 224 Q 200 216 215 224 Z",
-      thinking: "M 185 218 L 215 218",
-      ai_response: "M 180 212 Q 200 240 220 212 Z",
-      
-      // Lipsync frames
-      talk_open_wide: "M 182 215 Q 200 245 218 215 Z",
-      talk_open_mid: "M 182 215 Q 200 232 218 215 Z",
-      talk_open_narrow: "M 188 218 A 6 10 0 1 1 212 218 A 6 10 0 1 1 188 218",
-      talk_closed: "M 182 215 Q 200 218 218 215"
-    };
-
-    this.eyebrowPaths = {
-      neutral: {
-        l: "M 148 152 Q 160 146 172 152",
-        r: "M 228 152 Q 240 146 252 152"
-      },
-      happy: {
-        l: "M 148 148 Q 160 140 172 148",
-        r: "M 228 148 Q 240 140 252 148"
-      },
-      sad: {
-        l: "M 148 146 Q 160 152 172 152",
-        r: "M 228 152 Q 240 152 252 146"
-      },
-      surprised: {
-        l: "M 148 144 Q 160 134 172 144",
-        r: "M 228 144 Q 240 134 252 144"
-      },
-      angry: {
-        l: "M 148 146 L 172 156",
-        r: "M 228 156 L 252 146"
-      },
-      thinking: {
-        l: "M 148 148 Q 160 146 172 154",
-        r: "M 228 144 Q 240 136 252 144"
-      }
-    };
+    // Speech mouth state cycling
+    this.mouthOpenState = false;
+    this.lastMouthToggle = 0;
   }
 
   mount() {
-    this.svg = document.getElementById(this.svgId);
     this.wrapper = document.getElementById(this.wrapperId);
-    if (this.svg) {
-      this.mouth = this.svg.querySelector('#mouth');
-      this.eyebrowL = this.svg.querySelector('#eyebrow-l');
-      this.eyebrowR = this.svg.querySelector('#eyebrow-r');
+    if (this.wrapper) {
+      this.container = this.wrapper.querySelector('.avatar-stage-container');
+      
+      const isMobile = this.wrapperId.includes('mobile');
+      const prefix = isMobile ? 'mobile' : 'desktop';
+      
+      this.imgFront = document.getElementById(`${prefix}-avatar-img-front`);
+      this.imgBack = document.getElementById(`${prefix}-avatar-img-back`);
     }
     
-    // Clear any previous running loops
-    this.stopLoops();
+    this.isSpeaking = false;
+    this.isBlinking = false;
+    this.overrideExpression = null;
+    if (this.overrideTimeout) clearTimeout(this.overrideTimeout);
     
-    // Start standard loops
-    this.startBlinkLoop();
-    this.startEyeLookLoop();
-    this.setAvatarState(AvatarStates.IDLE);
-  }
-
-  stopLoops() {
-    if (this.blinkTimeout) clearTimeout(this.blinkTimeout);
-    if (this.lookTimeout) clearTimeout(this.lookTimeout);
-    if (this.reactionTimeout) clearTimeout(this.reactionTimeout);
-    if (this.speechTimeout) clearTimeout(this.speechTimeout);
+    // Set initial mode UI states
+    this.setMode(this.mode);
+    this.setExpression('idle');
+    
+    // Start requestAnimationFrame loop
+    if (this.frameId) cancelAnimationFrame(this.frameId);
+    this.updateFrame();
   }
 
   applyConfig(config) {
-    if (!this.wrapper || !this.svg) return;
-    
-    this.wrapper.style.transform = `scale(${config.scale}) translateY(${config.yOffset}px)`;
-    this.svg.className.baseVal = `style-${config.archetype}`;
-    if (!config.showHeadset) {
-      this.svg.classList.add('hide-headsets');
-    } else {
-      this.svg.classList.remove('hide-headsets');
+    if (config.defaultExpression) {
+      this.setExpression(config.defaultExpression);
     }
-
-    this.defaultExpression = config.defaultExpression;
-    this.setAvatarState(AvatarStates.IDLE);
   }
 
   setAvatarState(state) {
-    if (!this.svg) return;
-    
     if (this.currentState === AvatarStates.STOPPED && state !== AvatarStates.IDLE && state !== AvatarStates.STOPPED) {
       this.currentState = AvatarStates.IDLE;
     }
-
-    // Clear state classes
-    Object.values(AvatarStates).forEach(s => {
-      this.svg.classList.remove(`state-${s.toLowerCase()}`);
-    });
     
     this.currentState = state;
-    this.svg.classList.add(`state-${state.toLowerCase()}`);
     
-    if (this.reactionTimeout) {
-      clearTimeout(this.reactionTimeout);
-      this.reactionTimeout = null;
-    }
-
-    // Sync UI active dev-buttons
-    const btn = document.querySelector(`.demo-btn[data-state="${state}"]`);
-    if (btn) {
-      document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    }
-
-    // Dispatch custom event for UI updates
-    const event = new CustomEvent('avatarStateChanged', { detail: { state } });
-    window.dispatchEvent(event);
-
+    // Synchronize manual button grid highlight
+    this.syncActiveButton(state.toLowerCase());
+    
     switch (state) {
       case AvatarStates.IDLE:
-        this.stopTalkingAnimation();
-        this.setExpression(this.defaultExpression);
+        this.isSpeaking = false;
         break;
       case AvatarStates.TALKING:
-        this.startTalkingAnimation();
-        break;
-      case AvatarStates.BLINK:
-        this.triggerBlinkAction();
-        break;
-      case AvatarStates.HAPPY:
-        this.stopTalkingAnimation();
-        this.setExpression('happy');
-        this.reactionTimeout = setTimeout(() => this.setAvatarState(AvatarStates.IDLE), 1500);
-        break;
-      case AvatarStates.SAD:
-        this.stopTalkingAnimation();
-        this.setExpression('sad');
-        this.reactionTimeout = setTimeout(() => this.setAvatarState(AvatarStates.IDLE), 1800);
-        break;
-      case AvatarStates.SURPRISED:
-        this.stopTalkingAnimation();
-        this.setExpression('surprised');
-        this.reactionTimeout = setTimeout(() => this.setAvatarState(AvatarStates.IDLE), 1500);
-        break;
-      case AvatarStates.ANGRY:
-        this.stopTalkingAnimation();
-        this.setExpression('angry');
-        this.reactionTimeout = setTimeout(() => this.setAvatarState(AvatarStates.IDLE), 1800);
-        break;
-      case AvatarStates.THINKING:
-        this.stopTalkingAnimation();
-        this.setExpression('thinking');
-        // AI thinking will hold this state. Manual trigger will time out:
-        if (!this.isSpeaking && this.reactionTimeout === null && !this.svg.classList.contains('ai-active')) {
-          this.reactionTimeout = setTimeout(() => this.setAvatarState(AvatarStates.IDLE), 2000);
-        }
-        break;
-      case AvatarStates.AI_RESPONSE:
-        this.stopTalkingAnimation();
-        this.setExpression('ai_response');
-        this.reactionTimeout = setTimeout(() => this.setAvatarState(AvatarStates.IDLE), 2500);
+        this.isSpeaking = true;
         break;
       case AvatarStates.STOPPED:
-        this.stopTalkingAnimation();
-        this.setExpression('sad');
+        this.isSpeaking = false;
+        this.setOverrideExpression('sad');
         break;
+      default:
+        // Handle override reactions (HAPPY, SAD, ANGRY, SURPRISED, THINKING)
+        this.setOverrideExpression(state.toLowerCase());
+        break;
+    }
+    
+    // Dispatch custom event for system notifications
+    window.dispatchEvent(new CustomEvent('avatarStateChanged', { detail: { state } }));
+  }
+
+  setMode(mode) {
+    this.mode = mode; // 'manual' or 'tracking'
+    
+    if (this.container) {
+      if (mode === 'tracking') {
+        this.container.classList.remove('idle-animating');
+      } else {
+        this.container.classList.add('idle-animating');
+      }
+    }
+    
+    const isMobile = this.wrapperId && this.wrapperId.includes('mobile');
+    const prefix = isMobile ? 'mobile' : 'desktop';
+    
+    // Update badge status
+    const modeBadge = document.getElementById(`${prefix}-avatar-mode-text`);
+    if (modeBadge) {
+      if (mode === 'tracking') {
+        modeBadge.textContent = '● CAMERA TRACKING';
+        modeBadge.parentElement?.classList.add('tracking-active');
+      } else {
+        modeBadge.textContent = '● MANUAL CONTROL';
+        modeBadge.parentElement?.classList.remove('tracking-active');
+      }
+    }
+    
+    // Dim panel in tracking
+    const exprPanel = document.getElementById(`${prefix}-expression-panel`);
+    if (exprPanel) {
+      if (mode === 'tracking') {
+        exprPanel.classList.add('disabled');
+      } else {
+        exprPanel.classList.remove('disabled');
+      }
+    }
+    
+    // Highlight buttons
+    const btnManual = document.getElementById(`${prefix}-mode-manual`);
+    const btnTracking = document.getElementById(`${prefix}-mode-tracking`);
+    if (btnManual && btnTracking) {
+      if (mode === 'manual') {
+        btnManual.classList.add('active');
+        btnTracking.classList.remove('active');
+      } else {
+        btnManual.classList.remove('active');
+        btnTracking.classList.add('active');
+      }
+    }
+  }
+
+  setOverrideExpression(expr) {
+    this.overrideExpression = expr;
+    this.syncActiveButton(expr);
+    
+    if (this.overrideTimeout) clearTimeout(this.overrideTimeout);
+    
+    // If in tracking mode, overrides expire after 3 seconds to return to face matching
+    if (this.mode === 'tracking') {
+      this.overrideTimeout = setTimeout(() => {
+        this.overrideExpression = null;
+        this.syncActiveButton(null);
+      }, 3000);
     }
   }
 
   setExpression(expr) {
-    if (this.isSpeaking || !this.mouth || !this.eyebrowL || !this.eyebrowR) return;
+    if (!this.imgFront || !this.imgBack) return;
     
-    const mouthPath = this.mouthPaths[expr] || this.mouthPaths.neutral;
-    const eyebrow = this.eyebrowPaths[expr] || this.eyebrowPaths.neutral;
-
-    this.mouth.setAttribute('d', mouthPath);
-    this.eyebrowL.setAttribute('d', eyebrow.l);
-    this.eyebrowR.setAttribute('d', eyebrow.r);
-  }
-
-  startTalkingAnimation() {
-    if (this.isSpeaking) return;
-    this.isSpeaking = true;
-    this.animateSpeechCycle();
-  }
-
-  stopTalkingAnimation() {
-    this.isSpeaking = false;
-    if (this.speechTimeout) {
-      clearTimeout(this.speechTimeout);
-      this.speechTimeout = null;
+    const cleanExpr = expr.toLowerCase();
+    const newSrc = `public/avatar/avatar-${cleanExpr}.png`;
+    
+    // Check if we are already showing or transitions are in progress
+    if (this.imgFront.src.endsWith(newSrc) && this.imgFront.classList.contains('active')) {
+      return;
     }
     
-    const expr = (this.currentState !== AvatarStates.TALKING && this.currentState !== AvatarStates.STOPPED)
-      ? this.currentState.toLowerCase() 
-      : this.defaultExpression;
-    this.setExpression(expr);
+    // Swap source to back element
+    this.imgBack.src = newSrc;
+    
+    // Trigger opacity cross-fade
+    this.imgFront.classList.remove('active');
+    this.imgBack.classList.add('active');
+    
+    // Swapping handles
+    const temp = this.imgFront;
+    this.imgFront = this.imgBack;
+    this.imgBack = temp;
   }
 
-  animateSpeechCycle() {
-    if (!this.isSpeaking || !this.mouth) return;
-
-    const talkPaths = [
-      this.mouthPaths.talk_closed,
-      this.mouthPaths.talk_open_mid,
-      this.mouthPaths.talk_open_wide,
-      this.mouthPaths.talk_open_narrow
-    ];
+  syncActiveButton(expr) {
+    const isMobile = this.wrapperId && this.wrapperId.includes('mobile');
+    const prefix = isMobile ? 'mobile' : 'desktop';
     
-    const randomPath = talkPaths[Math.floor(Math.random() * talkPaths.length)];
-    this.mouth.setAttribute('d', randomPath);
-
-    // Natural randomized talking timers
-    const timings = [85, 110, 95, 140];
-    const duration = timings[Math.floor(Math.random() * timings.length)];
-
-    this.speechTimeout = setTimeout(() => {
-      this.animateSpeechCycle();
-    }, duration);
+    const buttons = document.querySelectorAll(`#${prefix}-expression-panel .expr-btn`);
+    buttons.forEach(btn => {
+      if (expr && btn.getAttribute('data-expr') === expr.toLowerCase()) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
   }
 
-  triggerBlinkAction() {
-    const eyeL = this.svg?.querySelector('.eye-blink-l');
-    const eyeR = this.svg?.querySelector('.eye-blink-r');
+  updateFaceMesh(landmarks) {
+    if (!landmarks || landmarks.length === 0 || this.mode !== 'tracking') return;
     
-    if (eyeL && eyeR) {
-      eyeL.classList.add('blink-active');
-      eyeR.classList.add('blink-active');
-      
-      setTimeout(() => {
-        eyeL.classList.remove('blink-active');
-        eyeR.classList.remove('blink-active');
-        if (this.currentState === AvatarStates.BLINK) {
-          this.setAvatarState(AvatarStates.IDLE);
-        }
-      }, 130);
+    // Key landmarks mapping
+    const nose = landmarks[4];
+    const cheekL = landmarks[234];
+    const cheekR = landmarks[454];
+    const forehead = landmarks[10];
+    const chin = landmarks[152];
+    const eyeL_inner = landmarks[133];
+    const eyeL_outer = landmarks[33];
+    const eyeR_inner = landmarks[362];
+    const eyeR_outer = landmarks[263];
+    const eyelidL_top = landmarks[159];
+    const eyelidL_bottom = landmarks[145];
+    const eyelidR_top = landmarks[386];
+    const eyelidR_bottom = landmarks[374];
+    
+    // 1. Yaw estimation (Left/Right look rotation)
+    const d_nose_left = Math.hypot(nose.x - cheekL.x, nose.y - cheekL.y);
+    const d_nose_right = Math.hypot(nose.x - cheekR.x, nose.y - cheekR.y);
+    const d_cheeks = Math.hypot(cheekR.x - cheekL.x, cheekR.y - cheekL.y);
+    const yawRatio = d_nose_left / d_cheeks;
+    this.targetYaw = (yawRatio - 0.5) * 110; 
+    this.targetYaw = Math.max(-12, Math.min(12, this.targetYaw));
+    
+    // 2. Pitch estimation (Up/Down head tilt)
+    const d_nose_forehead = Math.hypot(nose.x - forehead.x, nose.y - forehead.y);
+    const d_forehead_chin = Math.hypot(chin.x - forehead.x, chin.y - forehead.y);
+    const pitchRatio = d_nose_forehead / d_forehead_chin;
+    this.targetPitch = (pitchRatio - 0.41) * 80;
+    this.targetPitch = Math.max(-8, Math.min(8, this.targetPitch));
+    
+    // 3. Roll estimation (Left/Right tilt angle)
+    const dy = eyeR_outer.y - eyeL_outer.y;
+    const dx = eyeR_outer.x - eyeL_outer.x;
+    this.targetRoll = Math.atan2(dy, dx) * (180 / Math.PI);
+    this.targetRoll = Math.max(-8, Math.min(8, this.targetRoll));
+    
+    // 4. Translate X and Y (face centering)
+    // Horizontal center maps from 0.5 camera coordinate center.
+    // Invert X because camera preview is mirrored.
+    this.targetX = (0.5 - nose.x) * 140;
+    this.targetX = Math.max(-25, Math.min(25, this.targetX));
+    
+    this.targetY = (nose.y - 0.52) * 120;
+    this.targetY = Math.max(-15, Math.min(15, this.targetY));
+    
+    // 5. Eye Blink Estimation
+    const eyeL_open = Math.hypot(eyelidL_top.x - eyelidL_bottom.x, eyelidL_top.y - eyelidL_bottom.y);
+    const eyeL_width = Math.hypot(eyeL_inner.x - eyeL_outer.x, eyeL_inner.y - eyeL_outer.y);
+    const blinkRatioL = eyeL_open / eyeL_width;
+    
+    const eyeR_open = Math.hypot(eyelidR_top.x - eyelidR_bottom.x, eyelidR_top.y - eyelidR_bottom.y);
+    const eyeR_width = Math.hypot(eyeR_inner.x - eyeR_outer.x, eyeR_inner.y - eyeR_outer.y);
+    const blinkRatioR = eyeR_open / eyeR_width;
+    
+    // Blink threshold below 0.115
+    this.isBlinking = (blinkRatioL < 0.115 || blinkRatioR < 0.115);
+  }
+
+  updateFrame() {
+    if (this.currentState === AvatarStates.STOPPED) {
+      if (this.container) this.container.style.transform = '';
+      this.setExpression('sad');
+      return;
     }
-  }
-
-  startBlinkLoop() {
-    const triggerBlink = () => {
-      if (this.currentState !== AvatarStates.STOPPED) {
-        const eyeL = this.svg?.querySelector('.eye-blink-l');
-        const eyeR = this.svg?.querySelector('.eye-blink-r');
-        
-        if (eyeL && eyeR) {
-          eyeL.classList.add('blink-active');
-          eyeR.classList.add('blink-active');
-          
-          setTimeout(() => {
-            eyeL.classList.remove('blink-active');
-            eyeR.classList.remove('blink-active');
-          }, 120);
+    
+    const interpFactor = 0.16; // Interpolation speed
+    
+    if (this.mode === 'tracking') {
+      this.smoothedYaw = lerp(this.smoothedYaw, this.targetYaw, interpFactor);
+      this.smoothedPitch = lerp(this.smoothedPitch, this.targetPitch, interpFactor);
+      this.smoothedRoll = lerp(this.smoothedRoll, this.targetRoll, interpFactor);
+      this.smoothedX = lerp(this.smoothedX, this.targetX, interpFactor);
+      this.smoothedY = lerp(this.smoothedY, this.targetY, interpFactor);
+      
+      if (this.container) {
+        // Mirrored camera coordinate space rotation
+        this.container.style.transform = `
+          translateX(${this.smoothedX}px)
+          translateY(${this.smoothedY}px)
+          rotateY(${-this.smoothedYaw}deg)
+          rotateX(${this.smoothedPitch}deg)
+          rotateZ(${this.smoothedRoll}deg)
+        `;
+      }
+      
+      // Tracking Expression Resolver
+      if (this.isBlinking) {
+        this.setExpression('wink');
+      } else if (this.overrideExpression) {
+        this.setExpression(this.overrideExpression);
+      } else if (this.isSpeaking) {
+        const now = Date.now();
+        if (now - this.lastMouthToggle > 130) {
+          this.mouthOpenState = !this.mouthOpenState;
+          this.lastMouthToggle = now;
         }
+        this.setExpression(this.mouthOpenState ? 'talking' : 'idle');
+      } else {
+        this.setExpression('idle');
+      }
+    } else {
+      // Manual/Override alignment reset
+      this.smoothedYaw = lerp(this.smoothedYaw, 0, 0.08);
+      this.smoothedPitch = lerp(this.smoothedPitch, 0, 0.08);
+      this.smoothedRoll = lerp(this.smoothedRoll, 0, 0.08);
+      this.smoothedX = lerp(this.smoothedX, 0, 0.08);
+      this.smoothedY = lerp(this.smoothedY, 0, 0.08);
+      
+      if (this.container) {
+        this.container.style.transform = `
+          translateX(${this.smoothedX}px)
+          translateY(${this.smoothedY}px)
+          rotateY(${this.smoothedYaw}deg)
+          rotateX(${this.smoothedPitch}deg)
+          rotateZ(${this.smoothedRoll}deg)
+        `;
       }
       
-      const nextBlink = Math.random() * 3000 + 3000; // 3-6s
-      this.blinkTimeout = setTimeout(triggerBlink, nextBlink);
-    };
+      this.setExpression(this.overrideExpression || 'idle');
+    }
     
-    this.blinkTimeout = setTimeout(triggerBlink, 3000);
+    this.frameId = requestAnimationFrame(() => this.updateFrame());
   }
 
-  startEyeLookLoop() {
-    const triggerLook = () => {
-      if (this.isSpeaking || this.currentState !== AvatarStates.IDLE || !this.svg) {
-        const nextLook = Math.random() * 4000 + 4000;
-        this.lookTimeout = setTimeout(triggerLook, nextLook);
-        return;
-      }
-      
-      const pupilL = this.svg.querySelector('#pupil-l');
-      const pupilR = this.svg.querySelector('#pupil-r');
-      
-      if (pupilL && pupilR) {
-        const states = [
-          { x: 0, y: 0 },
-          { x: -2.5, y: 0 },
-          { x: 2.5, y: 0 },
-          { x: 0, y: -2.5 }
-        ];
-        
-        const target = states[Math.floor(Math.random() * states.length)];
-        pupilL.style.transform = `translate(${target.x}px, ${target.y}px)`;
-        pupilR.style.transform = `translate(${target.x}px, ${target.y}px)`;
-        
-        setTimeout(() => {
-          pupilL.style.transform = `translate(0px, 0px)`;
-          pupilR.style.transform = `translate(0px, 0px)`;
-        }, Math.random() * 800 + 1200);
-      }
-      
-      const nextLook = Math.random() * 5000 + 5000;
-      this.lookTimeout = setTimeout(triggerLook, nextLook);
-    };
-    
-    this.lookTimeout = setTimeout(triggerLook, 5000);
+  // Fallback / legacy methods
+  startBlinkLoop() {}
+  stopLoops() {
+    if (this.frameId) cancelAnimationFrame(this.frameId);
   }
 }
