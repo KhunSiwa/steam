@@ -3,352 +3,665 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stream Support - AI Streamer Companion</title>
+  <title>Streamer Support - Hardware Companion Platform</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="initializing">
+<body class="view-selection">
 
-  <!-- TOP NAVIGATION BAR -->
-  <header class="top-bar">
-    <div class="brand">
-      <img src="assets/logo.webp" alt="Stream Support Logo" class="app-logo">
-      <h1>Stream Support</h1>
+  <!-- ==========================================
+       1. DEVICE SELECTION SCREEN
+       ========================================== -->
+  <div id="device-selection-screen" class="selection-screen">
+    <div class="selection-box">
+      <div class="selection-header">
+        <div class="logo-wrapper">
+          <img src="assets/logo.webp" alt="Streamer Support Logo" class="brand-logo">
+        </div>
+        <h1>Streamer Support</h1>
+        <p>Select your hardware workspace to begin</p>
+      </div>
+      
+      <div class="selection-cards">
+        <button class="select-card" id="btn-device-computer">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <div class="card-info">
+            <h3>COMPUTER WORKSPACE</h3>
+            <p>Full streaming control room dashboard</p>
+            <span class="card-badge">Camera • Mic • Avatar • AI</span>
+          </div>
+        </button>
+
+        <button class="select-card" id="btn-device-phone">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+          </div>
+          <div class="card-info">
+            <h3>MOBILE COMPANION</h3>
+            <p>On-the-go stacked streaming controller</p>
+            <span class="card-badge">Camera • Mic • Avatar • AI</span>
+          </div>
+        </button>
+      </div>
     </div>
-    
-    <div class="status-panel">
-      <div class="status-indicator" id="connection-status">
-        <span class="status-dot"></span>
-        <span class="status-text">Connected</span>
+  </div>
+
+  <!-- ==========================================
+       2. COMPUTER STUDIO VIEW
+       ========================================== -->
+  <div id="computer-interface" class="studio-view-container" style="display: none;">
+    <header class="top-bar">
+      <div class="brand">
+        <img src="assets/logo.webp" alt="Logo" class="app-logo">
+        <h1>Streamer Support Studio</h1>
       </div>
       
-      <div class="mode-badge" id="current-mode-badge">
-        INITIALIZING
+      <div class="status-panel">
+        <!-- Hardware Connection summary -->
+        <div class="status-indicator" id="desktop-connection">
+          <span class="status-dot"></span>
+          <span class="status-text">Server: Offline</span>
+        </div>
+        <div class="mode-badge badge-stopped" id="desktop-mode-badge">
+          OFFLINE
+        </div>
+        <button class="icon-btn" id="desktop-settings-trigger" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <button class="icon-btn logout-btn" id="desktop-back-btn" title="Back to Workspace Selection">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
       </div>
+    </header>
+
+    <main class="studio-workspace">
+      <!-- LEFT COLUMN: CONTROLS & DEVICES -->
+      <section class="workspace-panel preview-panel">
+        <div class="panel-header">
+          <h2>Devices & Controls</h2>
+        </div>
+        
+        <div class="device-section-body">
+          <!-- Active Toggles -->
+          <div class="device-switches">
+            <div class="device-toggle-row">
+              <span>Camera Feed</span>
+              <button class="toggle-switch-btn" id="desktop-cam-switch"></button>
+            </div>
+            <div class="device-toggle-row">
+              <span>Microphone Live</span>
+              <button class="toggle-switch-btn" id="desktop-mic-switch"></button>
+            </div>
+          </div>
+
+          <!-- Hardware Device List (DeviceManager integration) -->
+          <div class="hardware-connection-list">
+            <h4>Connected Hardware</h4>
+            <div class="device-list-container" id="desktop-hardware-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          
+          <!-- Mic Gain Panel -->
+          <div class="mic-gain-panel">
+            <div class="gain-header">
+              <span>Mic Gain</span>
+              <span id="desktop-gain-value">1.0x</span>
+            </div>
+            <input type="range" id="desktop-mic-gain" min="0.0" max="2.0" step="0.1" value="1.0">
+            <div class="noise-processing-box">
+              <label><input type="checkbox" id="desktop-noise-gate"> Noise Suppressing</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="audio-meter-container">
+          <label>Audio Monitoring</label>
+          <div class="meter-track">
+            <div class="meter-bar" id="desktop-mic-meter" style="width: 0%;"></div>
+          </div>
+          <div class="meter-ticks">
+            <span>-40dB</span>
+            <span>-20dB</span>
+            <span>-10dB</span>
+            <span>0dB</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- CENTER COLUMN: LIVE PREVIEW & AVATAR -->
+      <section class="workspace-panel stage-panel">
+        <div class="panel-header">
+          <h2>Stream Stage</h2>
+          <div class="presence-overlay" id="desktop-presence-badge">CREATOR PRESENT</div>
+        </div>
+        
+        <div class="stage-viewport">
+          <div class="away-broadcast-banner" id="desktop-away-banner">
+            <span class="away-label">AWAY</span>
+            <span class="ai-active-pulse">AI is responding</span>
+          </div>
+
+          <!-- Camera preview video layer -->
+          <div class="video-preview-layer">
+            <video id="desktop-video-el" autoplay playsinline muted></video>
+            <div class="video-overlay" id="desktop-video-placeholder">
+              <div class="overlay-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M23 7l-7 5 7 5V7z"></path>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+              </div>
+              <p id="desktop-video-status-text">Camera Off</p>
+            </div>
+          </div>
+
+          <!-- SVG avatar layer (Overlay) -->
+          <div class="avatar-scale-wrapper" id="desktop-avatar-wrapper">
+            <!-- SVG placeholder for injection or inline definition -->
+            <svg id="desktop-avatar-svg" class="style-cyberpunk" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="d-skin-gradient" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffe4cc" />
+                  <stop offset="100%" stop-color="#fca5a5" />
+                </radialGradient>
+                <linearGradient id="d-hair-gradient-cyberpunk" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#a855f7" />
+                  <stop offset="100%" stop-color="#ec4899" />
+                </linearGradient>
+                <linearGradient id="d-hair-gradient-retro" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#facc15" />
+                  <stop offset="100%" stop-color="#e11d48" />
+                </linearGradient>
+                <linearGradient id="d-hair-gradient-assistant" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#64748b" />
+                  <stop offset="100%" stop-color="#1e293b" />
+                </linearGradient>
+                <linearGradient id="d-clothing-neon" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#06b6d4" />
+                  <stop offset="100%" stop-color="#8b5cf6" />
+                </linearGradient>
+                <linearGradient id="d-clothing-retro" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#f97316" />
+                  <stop offset="100%" stop-color="#facc15" />
+                </linearGradient>
+                <linearGradient id="d-suit-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#3b82f6" />
+                  <stop offset="100%" stop-color="#1d4ed8" />
+                </linearGradient>
+              </defs>
+              <g id="avatar-root-transform">
+                <g id="avatar-body">
+                  <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
+                  <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
+                  <g id="clothing-layers">
+                    <path id="jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#d-clothing-neon)" />
+                    <path id="jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
+                    <g class="suit-element" opacity="0">
+                      <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#d-suit-gradient)" />
+                      <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
+                      <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
+                    </g>
+                  </g>
+                </g>
+                <g id="avatar-head">
+                  <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#d-hair-gradient-cyberpunk)" />
+                  <path id="headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
+                  <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#d-skin-gradient)" />
+                  <ellipse id="blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+                  <ellipse id="blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+                  <g id="eyebrows">
+                    <path id="eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                    <path id="eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                  </g>
+                  <g id="eyes">
+                    <g id="eye-group-l" class="eye-blink-l" transform="translate(160, 172)">
+                      <ellipse id="eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                      <circle id="pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                    </g>
+                    <g id="eye-group-r" class="eye-blink-r" transform="translate(240, 172)">
+                      <ellipse id="eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                      <circle id="pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                    </g>
+                  </g>
+                  <g id="glasses-element" class="glasses-element" opacity="0">
+                    <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                    <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                    <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
+                  </g>
+                  <path id="nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
+                  <path id="mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                  <g class="headphone-element">
+                    <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                    <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                  </g>
+                  <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#d-hair-gradient-cyberpunk)" />
+                  <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#d-hair-gradient-cyberpunk)" />
+                  <g id="cap-element" class="cap-element" opacity="0">
+                    <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
+                    <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
+                    <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
+                  </g>
+                </g>
+              </g>
+            </svg>
+          </div>
+
+          <!-- AI Activity Indicator Status overlay -->
+          <div class="ai-speech-status-bar">
+            <span class="status-indicator-dot" id="desktop-avatar-status-dot"></span>
+            <span id="desktop-avatar-status-text">Ready</span>
+          </div>
+
+          <!-- Developer controls on stage -->
+          <div class="avatar-demo-controls">
+            <button class="demo-btn active" data-state="IDLE">Idle</button>
+            <button class="demo-btn" data-state="TALKING">Talking</button>
+            <button class="demo-btn" data-state="HAPPY">Happy</button>
+            <button class="demo-btn" data-state="SAD">Sad</button>
+            <button class="demo-btn" data-state="SURPRISED">Surprised</button>
+            <button class="demo-btn" data-state="ANGRY">Angry</button>
+            <button class="demo-btn" data-state="THINKING">Thinking</button>
+            <button class="demo-btn btn-stop" data-state="STOPPED">Stop</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: CHAT & PROCESS CHECKLIST -->
+      <section class="workspace-panel chat-panel">
+        <div class="panel-header">
+          <h2>Stream Chat</h2>
+          <div class="chat-mode-badge" id="desktop-chat-badge">MONITOR OFF</div>
+        </div>
+        
+        <div class="chat-log" id="desktop-chat-log">
+          <!-- Messages inserted dynamically -->
+        </div>
+
+        <!-- AI Response pipeline checklist indicator -->
+        <div class="ai-processing-box" id="ai-processing-panel" style="display: none;">
+          <div class="processing-header">
+            <div class="small-pulse"></div>
+            <span id="ai-pipeline-step">AI Assistant: Active</span>
+          </div>
+          <div class="message-context" id="ai-target-message">
+            <span class="context-label">Responding to:</span>
+            <p class="context-body">"Hey there!"</p>
+          </div>
+          <ul class="pipeline-checklist">
+            <li id="step-mod">Moderation validation</li>
+            <li id="step-rel">Relevance check</li>
+            <li id="step-gen">AI Persona generation</li>
+            <li id="step-val">Response policy validation</li>
+            <li id="step-tts">Speech synthesis / Audio queue</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- PERSISTENT CONTROL BAR -->
+    <footer class="control-bar">
+      <div class="control-group">
+        <button class="control-btn" id="desktop-control-cam">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 7l-7 5 7 5V7z"></path>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+          </svg>
+          <span>Camera</span>
+        </button>
+        <button class="control-btn" id="desktop-control-mic">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+          </svg>
+          <span>Mic</span>
+        </button>
+        <button class="control-btn" id="desktop-control-avatar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+          </svg>
+          <span>Avatar</span>
+        </button>
+        <button class="control-btn" id="desktop-control-ai">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          <span>AI Assist</span>
+        </button>
+      </div>
+
+      <div class="mode-selectors">
+        <button class="mode-btn" id="desktop-mode-live">
+          <span class="pulse-indicator bg-red"></span>
+          LIVE MODE
+        </button>
+        <button class="mode-btn" id="desktop-mode-away">
+          <span class="pulse-indicator bg-blue"></span>
+          AWAY MODE
+        </button>
+      </div>
+
+      <div class="emergency-stop-container">
+        <button class="emergency-btn desktop-emergency-stop">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+          </svg>
+          EMERGENCY STOP
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ==========================================
+       3. PHONE COMPANION VIEW
+       ========================================== -->
+  <div id="phone-interface" class="mobile-view-container" style="display: none;">
+    <header class="mobile-header">
+      <div class="mobile-brand">
+        <img src="assets/logo.webp" alt="Logo" class="app-logo">
+        <h2>Streamer Support Mobile</h2>
+      </div>
+      <div class="mobile-header-status">
+        <span class="status-dot green" id="mobile-connection-dot"></span>
+        <button class="icon-btn" id="mobile-back-btn" title="Exit Mobile Workspace">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mobile view viewport content panels -->
+    <div class="mobile-content-viewport">
       
-      <button class="icon-btn" id="settings-trigger" aria-label="Open Settings">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- TAB CONTENT: HOME (Stacked streaming status dashboard) -->
+      <div class="mobile-tab-panel active" id="m-tab-home">
+        <!-- Dual Previews stacked -->
+        <div class="mobile-previews">
+          <div class="mobile-cam-preview">
+            <video id="mobile-video-el" autoplay playsinline muted></video>
+            <div class="mobile-video-placeholder" id="mobile-video-placeholder">
+              <p>Mobile Camera Off</p>
+            </div>
+            <span class="preview-label-badge">Camera Preview</span>
+          </div>
+
+          <div class="mobile-avatar-preview">
+            <div class="avatar-scale-wrapper" id="mobile-avatar-wrapper">
+              <!-- Re-use or inject same SVG node for Mobile -->
+              <svg id="mobile-avatar-svg" class="style-cyberpunk" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <!-- Defs identical -->
+                <use href="#d-skin-gradient"></use>
+                <g id="m-avatar-root-transform" transform="translate(0, 0)">
+                  <g id="m-avatar-body">
+                    <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
+                    <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
+                    <g id="m-clothing-layers">
+                      <path id="m-jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#d-clothing-neon)" />
+                      <path id="m-jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
+                      <g class="suit-element" opacity="0">
+                        <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#d-suit-gradient)" />
+                        <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
+                        <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
+                      </g>
+                    </g>
+                  </g>
+                  <g id="m-avatar-head">
+                    <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#d-hair-gradient-cyberpunk)" />
+                    <path id="m-headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
+                    <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#d-skin-gradient)" />
+                    <ellipse id="m-blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+                    <ellipse id="m-blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
+                    <g id="m-eyebrows">
+                      <path id="m-eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                      <path id="m-eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                    </g>
+                    <g id="m-eyes">
+                      <g id="m-eye-group-l" class="eye-blink-l" transform="translate(160, 172)">
+                        <ellipse id="m-eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                        <circle id="m-pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                      </g>
+                      <g id="m-eye-group-r" class="eye-blink-r" transform="translate(240, 172)">
+                        <ellipse id="m-eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
+                        <circle id="m-pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
+                      </g>
+                    </g>
+                    <g id="m-glasses-element" class="glasses-element" opacity="0">
+                      <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                      <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
+                      <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
+                    </g>
+                    <path id="m-nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
+                    <path id="m-mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
+                    <g class="headphone-element">
+                      <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                      <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
+                    </g>
+                    <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#d-hair-gradient-cyberpunk)" />
+                    <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#d-hair-gradient-cyberpunk)" />
+                    <g id="m-cap-element" class="cap-element" opacity="0">
+                      <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
+                      <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
+                      <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
+                    </g>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="mobile-avatar-broadcast" id="mobile-away-banner">
+              <span class="badge-away">AWAY — AI RESPONDING</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick state toggles -->
+        <div class="mobile-card mobile-quick-controls">
+          <h4>Active Controls</h4>
+          <div class="mobile-switches-grid">
+            <button class="mobile-switch-btn active" id="mobile-quick-cam">Camera</button>
+            <button class="mobile-switch-btn active" id="mobile-quick-mic">Mic</button>
+            <button class="mobile-switch-btn" id="mobile-quick-avatar">Avatar</button>
+            <button class="mobile-switch-btn active" id="mobile-quick-ai">AI Assist</button>
+          </div>
+        </div>
+
+        <!-- Mobile Stream Mode Selectors -->
+        <div class="mobile-card mobile-mode-card">
+          <h4>Stream Mode</h4>
+          <div class="mobile-modes-row">
+            <button class="m-mode-btn" id="mobile-mode-live">LIVE MODE</button>
+            <button class="m-mode-btn" id="mobile-mode-away">AWAY MODE</button>
+          </div>
+        </div>
+
+        <!-- Giant Mobile Emergency Stop Button -->
+        <div class="mobile-emergency-container">
+          <button class="mobile-emergency-btn desktop-emergency-stop">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+            </svg>
+            EMERGENCY STOP
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: CAMERA (Enumerate and settings) -->
+      <div class="mobile-tab-panel" id="m-tab-camera">
+        <div class="mobile-card">
+          <h3>Camera Interface</h3>
+          <div class="form-row">
+            <label for="mobile-cam-select">Active Lens / Input</label>
+            <select id="mobile-cam-select">
+              <!-- Enumerated options -->
+            </select>
+          </div>
+          <div class="hardware-info-block" id="mobile-cam-info">
+            <p>Resolution: -</p>
+            <p>Frame Rate: -</p>
+            <p>Connection: Disconnected</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: MICROPHONE -->
+      <div class="mobile-tab-panel" id="m-tab-mic">
+        <div class="mobile-card">
+          <h3>Audio Input settings</h3>
+          <div class="form-row">
+            <label for="mobile-mic-select">Microphone Source</label>
+            <select id="mobile-mic-select">
+              <!-- Enumerated options -->
+            </select>
+          </div>
+          
+          <div class="mic-gain-panel" style="background: none; padding: 12px 0;">
+            <div class="gain-header">
+              <span>Input Gain</span>
+              <span id="mobile-gain-value">1.0x</span>
+            </div>
+            <input type="range" id="mobile-mic-gain" min="0.0" max="2.0" step="0.1" value="1.0">
+          </div>
+          
+          <div class="audio-meter-container" style="background: none; padding: 0;">
+            <label>Realtime amplitude</label>
+            <div class="meter-track">
+              <div class="meter-bar" id="mobile-mic-meter" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: AVATAR -->
+      <div class="mobile-tab-panel" id="m-tab-avatar">
+        <div class="mobile-card">
+          <h3>Avatar customization</h3>
+          <div class="form-row">
+            <label for="mobile-avatar-style">Style Archetype</label>
+            <select id="mobile-avatar-style">
+              <option value="cyberpunk">Cyberpunk Streamer</option>
+              <option value="retro">Retro Gamer</option>
+              <option value="assistant">Virtual Assistant</option>
+            </select>
+          </div>
+          <div class="form-row range-field">
+            <label for="mobile-avatar-scale">Mascot Scale</label>
+            <input type="range" id="mobile-avatar-scale" min="50" max="150" value="100">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: CHAT -->
+      <div class="mobile-tab-panel" id="m-tab-chat">
+        <div class="mobile-chat-viewport">
+          <div class="mobile-chat-header">
+            <h4>Live Feed</h4>
+          </div>
+          <div class="chat-log" id="mobile-chat-log">
+            <!-- Simulated logs -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: SETTINGS -->
+      <div class="mobile-tab-panel" id="m-tab-settings">
+        <div class="mobile-card">
+          <h3>AI Assistant Persona</h3>
+          <div class="form-row">
+            <label for="mobile-setting-name">Persona Name</label>
+            <input type="text" id="mobile-setting-name" value="Aura">
+          </div>
+          <div class="form-row">
+            <label for="mobile-setting-tone">Response Tone</label>
+            <select id="mobile-setting-tone">
+              <option value="friendly">Friendly</option>
+              <option value="casual" selected>Casual</option>
+              <option value="energetic">Energetic</option>
+              <option value="professional">Professional</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="mobile-setting-lang">Broadcast Language</label>
+            <select id="mobile-setting-lang">
+              <option value="en-US">English (US)</option>
+              <option value="th-TH">Thai (ภาษาไทย)</option>
+            </select>
+          </div>
+          <button class="action-btn" id="mobile-save-settings" style="width: 100%; margin-top: 10px;">Save settings</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Phone Bottom Navigation Bar -->
+    <nav class="mobile-nav-bar">
+      <button class="nav-item active" data-tab="m-tab-home">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-tab="m-tab-camera">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <span>Cam</span>
+      </button>
+      <button class="nav-item" data-tab="m-tab-mic">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        </svg>
+        <span>Mic</span>
+      </button>
+      <button class="nav-item" data-tab="m-tab-avatar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>Avatar</span>
+      </button>
+      <button class="nav-item" data-tab="m-tab-chat">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Chat</span>
+      </button>
+      <button class="nav-item" data-tab="m-tab-settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
+        <span>Set</span>
       </button>
-    </div>
-  </header>
-
-  <!-- LOADING / INITIALIZING STATE OVERLAY -->
-  <div id="loading-overlay" class="loading-overlay">
-    <div class="spinner"></div>
-    <p>Initializing Streaming Workspace...</p>
+    </nav>
   </div>
 
-  <!-- MAIN WORKSPACE -->
-  <main class="studio-workspace">
-    
-    <!-- LEFT PANEL: LIVE PREVIEW -->
-    <section class="workspace-panel preview-panel" id="preview-section">
-      <div class="panel-header">
-        <h2>Live Preview</h2>
-        <div class="device-status-indicators">
-          <span class="indicator-badge inactive" id="cam-status-badge">CAM OFF</span>
-          <span class="indicator-badge inactive" id="mic-status-badge">MIC OFF</span>
-        </div>
-      </div>
-      
-      <div class="preview-container">
-        <!-- Live Video Element -->
-        <video id="camera-preview" autoplay playsinline muted></video>
-        
-        <!-- Video Feed Cover/Overlay when Inactive -->
-        <div class="video-overlay" id="video-placeholder">
-          <div class="overlay-icon">
-            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 7l-7 5 7 5V7z"></path>
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-            </svg>
-          </div>
-          <p id="video-placeholder-text">Camera Inactive</p>
-          <button class="action-btn" id="enable-devices-btn">Enable Camera & Mic</button>
-        </div>
-      </div>
-      
-      <!-- Audio Level Meter -->
-      <div class="audio-meter-container">
-        <label for="mic-meter-bar">Microphone Level</label>
-        <div class="meter-track">
-          <div class="meter-bar" id="mic-meter-bar" style="width: 0%;"></div>
-        </div>
-        <div class="meter-ticks">
-          <span>-40dB</span>
-          <span>-20dB</span>
-          <span>-10dB</span>
-          <span>0dB</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- CENTER PANEL: AVATAR STAGE -->
-    <section class="workspace-panel stage-panel" id="stage-section">
-      <div class="panel-header">
-        <h2>Avatar Stage</h2>
-        <div class="presence-overlay" id="presence-badge">CREATOR PRESENT</div>
-      </div>
-      
-      <div class="stage-viewport" id="avatar-stage">
-        <!-- Dynamic overlay message for Away mode -->
-        <div class="away-broadcast-banner" id="away-banner">
-          <span class="away-label">CREATOR AWAY</span>
-          <span class="ai-active-pulse">AI ASSISTANT ACTIVE</span>
-        </div>
-
-        <!-- 2D SVG CUSTOMIZABLE AVATAR -->
-        <div class="avatar-scale-wrapper" id="avatar-wrapper">
-          <svg id="avatar-svg" class="style-cyberpunk" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <!-- Skin Gradients -->
-              <radialGradient id="skin-gradient" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffe4cc" />
-                <stop offset="100%" stop-color="#fca5a5" />
-              </radialGradient>
-              <!-- Hair Gradients -->
-              <linearGradient id="hair-gradient-cyberpunk" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#a855f7" />
-                <stop offset="100%" stop-color="#ec4899" />
-              </linearGradient>
-              <linearGradient id="hair-gradient-retro" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#facc15" />
-                <stop offset="100%" stop-color="#e11d48" />
-              </linearGradient>
-              <linearGradient id="hair-gradient-assistant" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#64748b" />
-                <stop offset="100%" stop-color="#1e293b" />
-              </linearGradient>
-              <!-- Clothing Gradients -->
-              <linearGradient id="suit-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#3b82f6" />
-                <stop offset="100%" stop-color="#1d4ed8" />
-              </linearGradient>
-              <linearGradient id="clothing-neon" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#06b6d4" />
-                <stop offset="100%" stop-color="#8b5cf6" />
-              </linearGradient>
-              <linearGradient id="clothing-retro" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#f97316" />
-                <stop offset="100%" stop-color="#facc15" />
-              </linearGradient>
-              
-              <!-- Glow Filters -->
-              <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            
-            <g id="avatar-root-transform" transform="translate(0, 0)">
-              <!-- LAYER 1: BODY & CLOTHING -->
-              <g id="avatar-body">
-                <!-- Neck & Neckline (Binds with body breathing) -->
-                <rect x="185" y="240" width="30" height="50" fill="#fca5a5" rx="5" />
-                <path d="M 185 270 L 200 285 L 215 270 Z" fill="#e2e8f0" opacity="0.3" />
-
-                <!-- Clothing (Dynamic) -->
-                <g id="clothing-layers">
-                  <!-- Cyberpunk Cyber-Jacket -->
-                  <path id="jacket-body" class="jacket-element" d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 C 250 270, 150 270, 130 280 Z" fill="url(#clothing-neon)" />
-                  <!-- Collar -->
-                  <path id="jacket-collar" class="jacket-element" d="M 170 265 L 200 300 L 230 265 L 260 285 L 200 325 L 140 285 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
-                  
-                  <!-- Assistant Suit/Tie -->
-                  <g class="suit-element" opacity="0">
-                    <path d="M 130 280 C 120 310, 110 350, 110 390 L 290 390 C 290 350, 280 310, 270 280 Z" fill="url(#suit-gradient)" />
-                    <!-- Collared Shirt -->
-                    <path d="M 180 265 L 200 285 L 220 265 L 200 295 Z" fill="#ffffff" />
-                    <!-- Tie -->
-                    <path d="M 195 285 L 205 285 L 210 360 L 200 375 L 190 360 Z" fill="#dc2626" />
-                  </g>
-                </g>
-              </g>
-
-              <!-- LAYER 2: HEAD & ACCESSORIES (Binds with head bobbing & rotation) -->
-              <g id="avatar-head">
-                <!-- Hair Back layer (Needs to move with head) -->
-                <path class="hair-bg" d="M 125 180 Q 110 240 120 270 Q 130 290 150 280 Q 200 290 250 280 Q 270 290 280 270 Q 290 240 275 180 Z" fill="url(#hair-gradient-cyberpunk)" />
-
-                <!-- Headphone Band -->
-                <path id="headphone-band" class="headphone-element" d="M 120 180 A 80 80 0 0 1 280 180" stroke="#0f172a" stroke-width="12" fill="none" />
-                
-                <!-- Face -->
-                <ellipse cx="200" cy="180" rx="65" ry="75" fill="url(#skin-gradient)" />
-                
-                <!-- Blushing cheeks -->
-                <ellipse id="blush-l" cx="155" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-                <ellipse id="blush-r" cx="245" cy="205" rx="8" ry="5" fill="#f43f5e" opacity="0.3" />
-
-                <!-- Eyebrows -->
-                <g id="eyebrows">
-                  <path id="eyebrow-l" d="M 148 152 Q 160 146 172 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                  <path id="eyebrow-r" d="M 228 152 Q 240 146 252 152" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-                </g>
-
-                <!-- Eyes (with transition classes for Blink) -->
-                <g id="eyes">
-                  <g id="eye-group-l" class="eye-blink-l" transform="translate(160, 172)">
-                    <ellipse id="eye-l" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                    <circle id="pupil-l" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                  </g>
-                  <g id="eye-group-r" class="eye-blink-r" transform="translate(240, 172)">
-                    <ellipse id="eye-r" cx="0" cy="0" rx="9" ry="10" fill="#0f172a" />
-                    <circle id="pupil-r" cx="-2" cy="-2" r="3.5" fill="#ffffff" />
-                  </g>
-                </g>
-                
-                <!-- Glasses (Toggleable style attribute) -->
-                <g id="glasses-element" class="glasses-element" opacity="0">
-                  <rect x="140" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                  <rect x="220" y="162" width="40" height="22" rx="3" stroke="#e2e8f0" stroke-width="4" fill="none" />
-                  <line x1="180" y1="173" x2="220" y2="173" stroke="#e2e8f0" stroke-width="4" />
-                </g>
-
-                <!-- Nose -->
-                <path id="nose" d="M 198 185 L 195 198 Q 200 200 202 198 Z" fill="#f43f5e" opacity="0.35" />
-
-                <!-- Mouth (Lipsync & Expression controlled path) -->
-                <path id="mouth" d="M 182 215 Q 200 222 218 215" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" />
-
-                <!-- Headphones Caps -->
-                <g class="headphone-element">
-                  <rect x="120" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                  <rect x="264" y="165" width="16" height="42" fill="#3b82f6" rx="8" />
-                </g>
-                
-                <!-- Hair Front layers -->
-                <path class="hair-fg" d="M 130 160 Q 135 100 200 95 Q 265 100 270 160 Q 280 120 260 110 Q 200 90 140 110 Q 120 120 130 160" fill="url(#hair-gradient-cyberpunk)" />
-                <path class="hair-bangs" d="M 134 145 Q 165 125 185 145 Q 205 125 225 145 Q 245 125 266 145 Q 255 120 200 120 Q 145 120 134 145" fill="url(#hair-gradient-cyberpunk)" />
-
-                <!-- Gaming Cap (Retro Accessory) -->
-                <g id="cap-element" class="cap-element" opacity="0">
-                  <path d="M 138 120 Q 200 80 262 120 Z" fill="#f97316" />
-                  <path d="M 150 115 Q 200 65 250 115 Z" fill="#facc15" />
-                  <path d="M 230 100 L 290 90 Q 300 100 280 110 Z" fill="#f97316" />
-                </g>
-              </g>
-            </g>
-          </svg>
-        </div>
-
-        <!-- AI Speaking Status and Pulse Rings -->
-        <div class="ai-speech-status-bar">
-          <span class="status-indicator-dot" id="stage-status-dot"></span>
-          <span id="stage-status-text">Ready</span>
-        </div>
-
-        <!-- DEV/DEMO ANIMATION STATE CONTROLS -->
-        <div class="avatar-demo-controls">
-          <button class="demo-btn active" data-state="IDLE">Idle</button>
-          <button class="demo-btn" data-state="TALKING">Talking</button>
-          <button class="demo-btn" data-state="HAPPY">Happy</button>
-          <button class="demo-btn" data-state="SURPRISED">Surprised</button>
-          <button class="demo-btn" data-state="THINKING">Thinking</button>
-          <button class="demo-btn" data-state="EXCITED">Excited</button>
-          <button class="demo-btn" data-state="CONFUSED">Confused</button>
-          <button class="demo-btn btn-stop" data-state="STOPPED">Stop</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- RIGHT PANEL: CHAT + AI ACTIVITY -->
-    <section class="workspace-panel chat-panel" id="chat-section">
-      <div class="panel-header">
-        <h2>Live Chat</h2>
-        <div class="chat-mode-badge" id="chat-monitor-status">MONITOR INACTIVE</div>
-      </div>
-      
-      <!-- Simulated Chat Messages Container -->
-      <div class="chat-log" id="chat-log">
-        <!-- Messages will be dynamically inserted here -->
-        <div class="chat-system-message">System: Chat simulator ready. Start LIVE or AWAY mode to run stream.</div>
-      </div>
-      
-      <!-- AI Thinking/Processing Indicator -->
-      <div class="ai-processing-box" id="ai-processing-panel" style="display: none;">
-        <div class="processing-header">
-          <div class="small-pulse"></div>
-          <span id="ai-pipeline-step">AI Assistant: Idle</span>
-        </div>
-        <div class="message-context" id="ai-target-message" style="display: none;">
-          <span class="context-label">Responding to:</span>
-          <p class="context-body">"Hello streamer!"</p>
-        </div>
-        <!-- Progress Steps -->
-        <ul class="pipeline-checklist">
-          <li id="step-mod" class="pending">Moderating message</li>
-          <li id="step-rel" class="pending">Checking relevance</li>
-          <li id="step-gen" class="pending">Generating persona response</li>
-          <li id="step-val" class="pending">Safety response validation</li>
-          <li id="step-tts" class="pending">Synthesizing audio & lip-sync</li>
-        </ul>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- PERSISTENT CONTROL BAR -->
-  <footer class="control-bar">
-    <div class="control-group">
-      <!-- Media Toggles -->
-      <button class="control-btn" id="camera-toggle" aria-label="Toggle Camera">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 7l-7 5 7 5V7z"></path>
-          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-        </svg>
-        <span>Camera</span>
-      </button>
-      
-      <button class="control-btn" id="mic-toggle" aria-label="Toggle Microphone">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-          <line x1="12" y1="19" x2="12" y2="23"></line>
-          <line x1="8" y1="23" x2="16" y2="23"></line>
-        </svg>
-        <span>Microphone</span>
-      </button>
-
-      <button class="control-btn" id="mute-toggle" aria-label="Mute Stream">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-        </svg>
-        <span>Mute Sound</span>
-      </button>
-    </div>
-
-    <!-- Mode Selectors -->
-    <div class="mode-selectors">
-      <button class="mode-btn" id="btn-mode-live">
-        <span class="pulse-indicator bg-red"></span>
-        LIVE MODE
-      </button>
-      <button class="mode-btn" id="btn-mode-away">
-        <span class="pulse-indicator bg-blue"></span>
-        AWAY MODE
-      </button>
-    </div>
-
-    <!-- Emergency Button -->
-    <div class="emergency-stop-container">
-      <button class="emergency-btn" id="emergency-stop" aria-label="Emergency Stop AI Activity">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-        </svg>
-        EMERGENCY STOP
-      </button>
-    </div>
-  </footer>
-
-  <!-- SETTINGS MODAL DIALOG -->
-  <!-- CSS styled, dismissing with Esc naturally or light-dismiss (closedby="any" progressive enhancement) -->
+  <!-- ==========================================
+       4. CREATOR SETTINGS DIALOG (DESKTOP)
+       ========================================== -->
   <dialog id="settings-dialog" class="settings-modal" closedby="any" aria-labelledby="settings-title">
     <div class="settings-header">
       <h2 id="settings-title">Creator Control Panel</h2>
@@ -391,9 +704,10 @@
           <select id="setting-avatar-expression">
             <option value="neutral">Neutral (Ready to Stream)</option>
             <option value="happy">Happy (Engaged)</option>
+            <option value="sad">Sad (Melancholy)</option>
             <option value="surprised">Surprised (Excited)</option>
+            <option value="angry">Angry (Frustrated)</option>
             <option value="thinking">Thinking (Musing)</option>
-            <option value="confused">Confused (Dazed)</option>
           </select>
         </div>
         
@@ -412,7 +726,7 @@
         
         <div class="form-row">
           <label for="setting-ai-personality">AI Personality Bio</label>
-          <textarea id="setting-ai-personality" rows="3">A witty, energetic, and extremely supportive AI companion. Interactive with the chat, loves gaming trivia, and keeps the stream hyped but never claims to be the real streamer.</textarea>
+          <textarea id="setting-ai-personality" rows="3">Friendly, energetic, witty, concise.</textarea>
         </div>
 
         <div class="grid-2-col">
@@ -442,33 +756,38 @@
             <option value="th-TH">Thai (ภาษาไทย)</option>
           </select>
         </div>
+
+        <div class="form-row">
+          <label for="setting-ai-instructions">Custom AI Instructions</label>
+          <textarea id="setting-ai-instructions" rows="2">Never claim to be the real streamer. Never reveal private information.</textarea>
+        </div>
       </div>
 
       <!-- TAB: CREATOR KNOWLEDGE -->
       <div class="tab-content" id="tab-knowledge">
         <div class="form-row">
           <label for="setting-kn-creator">About the Creator</label>
-          <textarea id="setting-kn-creator" rows="2">Antigravity is a speedrunner who plays retro RPGs and roguelikes. Loves drinking coffee and chatting about game design.</textarea>
+          <textarea id="setting-kn-creator" rows="2">Antigravity is a speedrunner playing retro RPGs.</textarea>
         </div>
 
         <div class="form-row">
           <label for="setting-kn-schedule">Stream Schedule</label>
-          <input type="text" id="setting-kn-schedule" value="Every Tuesday & Thursday at 8 PM, Saturday at 2 PM">
+          <input type="text" id="setting-kn-schedule" value="Tuesday & Thursday at 8 PM">
         </div>
 
         <div class="form-row">
           <label for="setting-kn-faqs">Frequently Asked Questions (FAQ)</label>
-          <textarea id="setting-kn-faqs" rows="2">Q: Keyboard? A: Custom mechanical 65% with brown switches. Q: Favorite game? A: Hades and Chrono Trigger.</textarea>
+          <textarea id="setting-kn-faqs" rows="2">Brown mechanical switches</textarea>
         </div>
 
         <div class="grid-2-col">
           <div class="form-row">
             <label for="setting-kn-allowed">Allowed/Desired Topics</label>
-            <input type="text" id="setting-kn-allowed" value="gaming, coffee, speedruns, mechanics, schedule, mechanical keyboards">
+            <input type="text" id="setting-kn-allowed" value="gaming, coffee, speedruns, mechanics, schedule">
           </div>
           <div class="form-row">
             <label for="setting-kn-forbidden">Forbidden Topics</label>
-            <input type="text" id="setting-kn-forbidden" value="politics, religious debates, financial advice, direct streamer impersonation">
+            <input type="text" id="setting-kn-forbidden" value="politics, financial advice, medical claims">
           </div>
         </div>
       </div>
@@ -508,6 +827,6 @@
   </dialog>
 
   <!-- Core JavaScript Module -->
-  <script src="main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>

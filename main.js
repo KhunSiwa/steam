@@ -1,1110 +1,179 @@
 /**
- * Stream Support - Core Companion Platform Javascript Module
+ * Streamer Support - Main Application Orchestrator (ES Module)
  */
 
-// ==========================================
-// 1. MEDIA MANAGER (Camera & Microphone)
-// ==========================================
-class MediaManager {
-  constructor(appController) {
-    this.app = appController;
-    this.videoElement = document.getElementById('camera-preview');
-    this.videoPlaceholder = document.getElementById('video-placeholder');
-    this.videoPlaceholderText = document.getElementById('video-placeholder-text');
-    this.camBadge = document.getElementById('cam-status-badge');
-    this.micBadge = document.getElementById('mic-status-badge');
-    this.micMeterBar = document.getElementById('mic-meter-bar');
-    
-    this.cameraStream = null;
-    this.microphoneStream = null;
-    
-    // Web Audio API setup
-    this.audioContext = null;
-    this.analyser = null;
-    this.dataArray = null;
-    this.animationFrameId = null;
-    
-    this.cameraEnabled = false;
-    this.microphoneEnabled = false;
-    this.isMuted = false;
-  }
+import { StateManager, AppStates } from './shared/state.js';
+import { CameraSystem } from './shared/camera.js';
+import { MicrophoneSystem } from './shared/microphone.js';
+import { AvatarEngine, AvatarStates } from './shared/avatar.js';
+import { AISystem } from './shared/ai.js';
+import { TTSSystem } from './shared/tts.js';
+import { ChatSystem } from './shared/chat.js';
+import { ModerationSystem } from './shared/moderation.js';
+import { DeviceManager } from './shared/devices.js';
+import { EmergencySystem } from './shared/emergency.js';
 
-  async initializeMedia() {
-    this.updateUIStates();
-  }
-
-  async startCamera() {
-    if (this.cameraStream) {
-      this.stopCamera();
-    }
-    
-    try {
-      this.cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' }
-      });
-      this.videoElement.srcObject = this.cameraStream;
-      this.videoElement.play();
-      this.cameraEnabled = true;
-      document.getElementById('preview-section').classList.remove('cam-disabled');
-      this.videoPlaceholder.classList.add('hidden');
-      this.camBadge.textContent = "CAM ACTIVE";
-      this.camBadge.className = "indicator-badge active";
-      document.getElementById('camera-toggle').classList.add('active');
-    } catch (err) {
-      console.warn("Camera access denied or unavailable: ", err);
-      this.cameraEnabled = false;
-      this.videoPlaceholderText.textContent = "Camera Error: Permission Denied";
-      this.videoPlaceholder.classList.remove('hidden');
-      this.camBadge.textContent = "CAM ERROR";
-      this.camBadge.className = "indicator-badge inactive";
-      document.getElementById('camera-toggle').classList.remove('active');
-    }
-    this.app.syncControlButtons();
-  }
-
-  stopCamera() {
-    if (this.cameraStream) {
-      this.cameraStream.getTracks().forEach(track => track.stop());
-      this.cameraStream = null;
-    }
-    this.videoElement.srcObject = null;
-    this.cameraEnabled = false;
-    document.getElementById('preview-section').classList.add('cam-disabled');
-    this.videoPlaceholderText.textContent = "Camera Inactive";
-    this.videoPlaceholder.classList.remove('hidden');
-    this.camBadge.textContent = "CAM OFF";
-    this.camBadge.className = "indicator-badge inactive";
-    document.getElementById('camera-toggle').classList.remove('active');
-    this.app.syncControlButtons();
-  }
-
-  async startMicrophone() {
-    if (this.microphoneStream) {
-      this.stopMicrophone();
-    }
-    
-    try {
-      this.microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.microphoneEnabled = true;
-      this.micBadge.textContent = "MIC ACTIVE";
-      this.micBadge.className = "indicator-badge active";
-      document.getElementById('mic-toggle').classList.add('active');
-      
-      // Start volume analysis
-      this.setupAudioAnalysis(this.microphoneStream);
-    } catch (err) {
-      console.warn("Microphone access denied or unavailable: ", err);
-      this.microphoneEnabled = false;
-      this.micBadge.textContent = "MIC ERROR";
-      this.micBadge.className = "indicator-badge inactive";
-      document.getElementById('mic-toggle').classList.remove('active');
-      this.micMeterBar.style.width = '0%';
-    }
-    this.app.syncControlButtons();
-  }
-
-  stopMicrophone() {
-    if (this.microphoneStream) {
-      this.microphoneStream.getTracks().forEach(track => track.stop());
-      this.microphoneStream = null;
-    }
-    this.microphoneEnabled = false;
-    this.micBadge.textContent = "MIC OFF";
-    this.micBadge.className = "indicator-badge inactive";
-    document.getElementById('mic-toggle').classList.remove('active');
-    
-    // Stop Web Audio analysis
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
-    this.micMeterBar.style.width = '0%';
-    this.app.syncControlButtons();
-  }
-
-  setupAudioAnalysis(stream) {
-    try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      this.audioContext = new AudioContextClass();
-      const source = this.audioContext.createMediaStreamSource(stream);
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 256;
-      source.connect(this.analyser);
-      
-      const bufferLength = this.analyser.frequencyBinCount;
-      this.dataArray = new Uint8Array(bufferLength);
-      
-      const updateMeter = () => {
-        if (!this.microphoneEnabled || this.isMuted) {
-          this.micMeterBar.style.width = '0%';
-          return;
-        }
-        
-        this.analyser.getByteFrequencyData(this.dataArray);
-        
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += this.dataArray[i];
-        }
-        
-        const average = sum / bufferLength;
-        // Normalize average (0-255) to percentage
-        let level = (average / 120) * 100; 
-        level = Math.min(Math.max(level, 0), 100);
-        
-        this.micMeterBar.style.width = `${level}%`;
-        
-        this.animationFrameId = requestAnimationFrame(updateMeter);
-      };
-      
-      updateMeter();
-    } catch (e) {
-      console.warn("Failed to initialize Web Audio Analyser: ", e);
-    }
-  }
-
-  toggleMute() {
-    this.isMuted = !this.isMuted;
-    const muteBtn = document.getElementById('mute-toggle');
-    
-    if (this.microphoneStream) {
-      this.microphoneStream.getAudioTracks().forEach(track => {
-        track.enabled = !this.isMuted;
-      });
-    }
-    
-    if (this.isMuted) {
-      muteBtn.classList.add('muted');
-      muteBtn.querySelector('span').textContent = "Unmute Mic";
-      this.micBadge.textContent = "MIC MUTED";
-      this.micBadge.className = "indicator-badge inactive";
-      this.micMeterBar.style.width = '0%';
-    } else {
-      muteBtn.classList.remove('muted');
-      muteBtn.querySelector('span').textContent = "Mute Sound";
-      if (this.microphoneEnabled) {
-        this.micBadge.textContent = "MIC ACTIVE";
-        this.micBadge.className = "indicator-badge active";
-      } else {
-        this.micBadge.textContent = "MIC OFF";
-      }
-    }
-  }
-
-  updateUIStates() {
-    if (this.cameraEnabled) {
-      this.videoPlaceholder.classList.add('hidden');
-      this.camBadge.textContent = "CAM ACTIVE";
-      this.camBadge.className = "indicator-badge active";
-    } else {
-      this.videoPlaceholder.classList.remove('hidden');
-      this.camBadge.textContent = "CAM OFF";
-      this.camBadge.className = "indicator-badge inactive";
-    }
-
-    if (this.microphoneEnabled) {
-      this.micBadge.textContent = this.isMuted ? "MIC MUTED" : "MIC ACTIVE";
-      this.micBadge.className = this.isMuted ? "indicator-badge inactive" : "indicator-badge active";
-    } else {
-      this.micBadge.textContent = "MIC OFF";
-      this.micBadge.className = "indicator-badge inactive";
-    }
-  }
-}
-
-// ==========================================
-// 2. AVATAR MANAGER (SVG & Animations)
-// ==========================================
-class AvatarManager {
-  constructor(appController) {
-    this.app = appController;
-    this.svg = document.getElementById('avatar-svg');
-    this.wrapper = document.getElementById('avatar-wrapper');
-    this.mouth = document.getElementById('mouth');
-    this.eyebrowL = document.getElementById('eyebrow-l');
-    this.eyebrowR = document.getElementById('eyebrow-r');
-    
-    // Status text & indicators
-    this.stageStatusText = document.getElementById('stage-status-text');
-    this.stageStatusDot = document.getElementById('stage-status-dot');
-    
-    // Configurable parameters (synchronized from settings)
-    this.archetype = 'cyberpunk';
-    this.scale = 1.0;
-    this.yOffset = 0;
-    this.defaultExpression = 'neutral';
-    this.showHeadset = true;
-    
-    // State machine
-    this.currentState = 'IDLE';
-    
-    // Timeout/interval tracking
-    this.blinkTimeout = null;
-    this.lookTimeout = null;
-    this.reactionTimeout = null;
-    this.speechTimeout = null;
-    this.isSpeaking = false;
-
-    // Mouth SVG path commands for lip-sync and expressions
-    this.mouthPaths = {
-      neutral: "M 182 215 Q 200 222 218 215",
-      happy: "M 182 215 Q 200 236 218 215 Z",
-      surprised: "M 192 218 A 8 8 0 1 1 208 218 A 8 8 0 1 1 192 218",
-      thinking: "M 185 218 L 215 218",
-      confused: "M 182 218 Q 192 210 200 218 Q 208 226 218 218",
-      excited: "M 180 212 Q 200 240 220 212 Z",
-      
-      // Lipsync stages
-      talk_open_wide: "M 182 215 Q 200 245 218 215 Z",
-      talk_open_mid: "M 182 215 Q 200 232 218 215 Z",
-      talk_open_narrow: "M 188 218 A 6 10 0 1 1 212 218 A 6 10 0 1 1 188 218",
-      talk_closed: "M 182 215 Q 200 218 218 215"
-    };
-    
-    // Eyebrow SVG paths for expressions
-    this.eyebrowPaths = {
-      neutral: {
-        l: "M 148 152 Q 160 146 172 152",
-        r: "M 228 152 Q 240 146 252 152"
-      },
-      happy: {
-        l: "M 148 148 Q 160 140 172 148",
-        r: "M 228 148 Q 240 140 252 148"
-      },
-      surprised: {
-        l: "M 148 144 Q 160 134 172 144",
-        r: "M 228 144 Q 240 134 252 144"
-      },
-      thinking: {
-        l: "M 148 148 Q 160 146 172 154", // Left slanted down
-        r: "M 228 144 Q 240 136 252 144"  // Right arched up
-      },
-      confused: {
-        l: "M 148 154 Q 160 146 172 146", // Slanted outer
-        r: "M 228 146 Q 240 146 252 154"
-      }
-    };
-
-    // Start background loops
-    this.startBlinkLoop();
-    this.startEyeLookLoop();
-  }
-
-  applyConfig(config) {
-    this.archetype = config.archetype;
-    this.scale = config.scale;
-    this.yOffset = config.yOffset;
-    this.defaultExpression = config.defaultExpression;
-    this.showHeadset = config.showHeadset;
-
-    // Apply scaling & translation
-    this.wrapper.style.transform = `scale(${this.scale}) translateY(${this.yOffset}px)`;
-    
-    // Apply archetype style class
-    this.svg.className.baseVal = `style-${this.archetype}`;
-    if (!this.showHeadset) {
-      this.svg.classList.add('hide-headsets');
-    } else {
-      this.svg.classList.remove('hide-headsets');
-    }
-
-    // Set default state
-    this.setAvatarState('IDLE');
-  }
-
-  setAvatarState(state) {
-    if (this.currentState === 'STOPPED' && state !== 'IDLE' && state !== 'STOPPED') {
-      // Allow exiting stopped state manually or when starting LIVE/AWAY modes
-      this.currentState = 'IDLE';
-    }
-
-    // Clear previous state classes
-    const states = ['idle', 'talking', 'happy', 'surprised', 'thinking', 'excited', 'confused', 'stopped'];
-    states.forEach(s => this.svg.classList.remove(`state-${s}`));
-    
-    this.currentState = state;
-    this.svg.classList.add(`state-${state.toLowerCase()}`);
-    
-    // Clear reaction timeout if transitioning
-    if (this.reactionTimeout) {
-      clearTimeout(this.reactionTimeout);
-      this.reactionTimeout = null;
-    }
-
-    // Update highlight on demo buttons if present
-    const btn = document.querySelector(`.demo-btn[data-state="${state}"]`);
-    if (btn) {
-      document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    }
-
-    switch (state) {
-      case 'IDLE':
-        this.stopTalkingAnimation();
-        this.setExpression(this.defaultExpression);
-        this.setVisualStatus(this.app.currentMode === 'AWAY' ? "Monitoring Chat" : "Ready", "listening");
-        break;
-        
-      case 'TALKING':
-        this.setVisualStatus("Speaking", "speaking");
-        this.startTalkingAnimation();
-        break;
-        
-      case 'HAPPY':
-        this.stopTalkingAnimation();
-        this.setExpression('happy');
-        this.setVisualStatus("Feeling: HAPPY", "thinking");
-        // Happy triggers body bounce once. Return to IDLE after 1500ms
-        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1500);
-        break;
-        
-      case 'SURPRISED':
-        this.stopTalkingAnimation();
-        this.setExpression('surprised');
-        this.setVisualStatus("Feeling: SURPRISED", "thinking");
-        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1500);
-        break;
-        
-      case 'THINKING':
-        this.stopTalkingAnimation();
-        this.setExpression('thinking');
-        this.setVisualStatus("Thinking...", "thinking");
-        // If triggered programmatically by AI, it will be held. If triggered manually, return to idle
-        if (!this.app.ttsManager.isSpeaking && this.app.currentMode !== 'AWAY') {
-          this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 2000);
-        }
-        break;
-        
-      case 'EXCITED':
-        this.stopTalkingAnimation();
-        this.setExpression('excited');
-        this.setVisualStatus("Feeling: EXCITED", "speaking");
-        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1800);
-        break;
-        
-      case 'CONFUSED':
-        this.stopTalkingAnimation();
-        this.setExpression('confused');
-        this.setVisualStatus("Feeling: CONFUSED", "thinking");
-        this.reactionTimeout = setTimeout(() => this.setAvatarState('IDLE'), 1800);
-        break;
-        
-      case 'STOPPED':
-        this.stopTalkingAnimation();
-        this.setExpression('confused');
-        this.setVisualStatus("AI STOPPED", "speaking");
-        break;
-    }
-  }
-
-  setExpression(expr) {
-    if (this.isSpeaking) return;
-    
-    const mouthPath = this.mouthPaths[expr] || this.mouthPaths.neutral;
-    const eyebrow = this.eyebrowPaths[expr] || this.eyebrowPaths.neutral;
-
-    this.mouth.setAttribute('d', mouthPath);
-    this.eyebrowL.setAttribute('d', eyebrow.l);
-    this.eyebrowR.setAttribute('d', eyebrow.r);
-  }
-
-  setVisualStatus(stateText, statusClass) {
-    this.stageStatusText.textContent = stateText;
-    this.stageStatusDot.className = `status-indicator-dot ${statusClass}`;
-  }
-
-  startTalkingAnimation() {
-    if (this.isSpeaking) return;
-    this.isSpeaking = true;
-    this.animateSpeechCycle();
-  }
-
-  stopTalkingAnimation() {
-    this.isSpeaking = false;
-    if (this.speechTimeout) {
-      clearTimeout(this.speechTimeout);
-      this.speechTimeout = null;
-    }
-    
-    // Return mouth to expression shape
-    const activeExpr = (this.currentState !== 'TALKING' && this.currentState !== 'STOPPED') ? this.currentState.toLowerCase() : this.defaultExpression;
-    this.setExpression(activeExpr);
-  }
-
-  animateSpeechCycle() {
-    if (!this.isSpeaking) return;
-
-    const talkPaths = [
-      this.mouthPaths.talk_closed,
-      this.mouthPaths.talk_open_mid,
-      this.mouthPaths.talk_open_wide,
-      this.mouthPaths.talk_open_narrow
-    ];
-    
-    // Choose a random path
-    const randomPath = talkPaths[Math.floor(Math.random() * talkPaths.length)];
-    this.mouth.setAttribute('d', randomPath);
-
-    // Natural talking timing: randomize frame durations (between 80ms and 150ms)
-    const timings = [80, 120, 90, 150];
-    const duration = timings[Math.floor(Math.random() * timings.length)];
-
-    this.speechTimeout = setTimeout(() => {
-      this.animateSpeechCycle();
-    }, duration);
-  }
-
-  startBlinkLoop() {
-    const triggerBlink = () => {
-      const eyeL = document.querySelector('.eye-blink-l');
-      const eyeR = document.querySelector('.eye-blink-r');
-      
-      if (eyeL && eyeR) {
-        eyeL.classList.add('blink-active');
-        eyeR.classList.add('blink-active');
-        
-        setTimeout(() => {
-          eyeL.classList.remove('blink-active');
-          eyeR.classList.remove('blink-active');
-        }, 120);
-      }
-      
-      // Random blink every 3 to 6 seconds
-      const nextBlink = Math.random() * 3000 + 3000;
-      this.blinkTimeout = setTimeout(triggerBlink, nextBlink);
-    };
-    
-    this.blinkTimeout = setTimeout(triggerBlink, Math.random() * 3000 + 2000);
-  }
-
-  startEyeLookLoop() {
-    const triggerLook = () => {
-      // Don't look around if speaking or performing a specific reaction
-      if (this.isSpeaking || this.currentState !== 'IDLE') {
-        const nextLook = Math.random() * 4000 + 4000;
-        this.lookTimeout = setTimeout(triggerLook, nextLook);
-        return;
-      }
-      
-      const pupilL = document.getElementById('pupil-l');
-      const pupilR = document.getElementById('pupil-r');
-      
-      if (pupilL && pupilR) {
-        const lookDirections = [
-          { x: 0, y: 0 },   // Center
-          { x: -2, y: 0 },  // Left
-          { x: 2, y: 0 },   // Right
-          { x: 0, y: -2 }   // Up
-        ];
-        
-        const target = lookDirections[Math.floor(Math.random() * lookDirections.length)];
-        
-        pupilL.style.transform = `translate(${target.x}px, ${target.y}px)`;
-        pupilR.style.transform = `translate(${target.x}px, ${target.y}px)`;
-        
-        // Hold look for 1.2s to 2.2s, then snap back to center
-        setTimeout(() => {
-          pupilL.style.transform = `translate(0px, 0px)`;
-          pupilR.style.transform = `translate(0px, 0px)`;
-        }, Math.random() * 1000 + 1200);
-      }
-      
-      const nextLook = Math.random() * 5000 + 5000;
-      this.lookTimeout = setTimeout(triggerLook, nextLook);
-    };
-    
-    this.lookTimeout = setTimeout(triggerLook, 6000);
-  }
-}
-
-// ==========================================
-// 3. TTS MANAGER (Web SpeechSynthesis)
-// ==========================================
-class TTSManager {
-  constructor(appController) {
-    this.app = appController;
-    this.voices = [];
-    this.isSpeaking = false;
-    this.currentUtterance = null;
-    this.mockSpeakTimeout = null;
-
-    // Load available voices
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        this.voices = window.speechSynthesis.getVoices();
-      };
-      this.voices = window.speechSynthesis.getVoices();
-    }
-  }
-
-  generateSpeech(text, langCode = 'en-US') {
-    return new Promise((resolve) => {
-      this.stopSpeech();
-      this.isSpeaking = true;
-
-      // Check if SpeechSynthesis is supported and active
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        this.currentUtterance = utterance;
-        
-        // Find matched voice
-        let matchedVoice = null;
-        if (langCode.startsWith('th')) {
-          matchedVoice = this.voices.find(v => v.lang.includes('TH') || v.lang.includes('th'));
-          utterance.pitch = 1.1; // Slightly cuter pitch
-          utterance.rate = 1.05;
-        } else {
-          matchedVoice = this.voices.find(v => v.lang.includes('en-') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Female')));
-          if (!matchedVoice) {
-            matchedVoice = this.voices.find(v => v.lang.startsWith('en'));
-          }
-          utterance.pitch = 1.0;
-          utterance.rate = 1.0;
-        }
-
-        if (matchedVoice) {
-          utterance.voice = matchedVoice;
-        }
-        utterance.lang = langCode;
-
-        utterance.onstart = () => {
-          this.app.avatarManager.setAvatarState('TALKING');
-        };
-
-        utterance.onend = () => {
-          this.isSpeaking = false;
-          this.app.avatarManager.setAvatarState('IDLE');
-          resolve();
-        };
-
-        utterance.onerror = (e) => {
-          console.warn("SpeechSynthesis error: ", e);
-          this.isSpeaking = false;
-          this.app.avatarManager.setAvatarState('IDLE');
-          resolve();
-        };
-
-        window.speechSynthesis.speak(utterance);
-      } else {
-        // Fallback: If TTS is not supported
-        console.warn("SpeechSynthesis not supported on this browser. Running fallback animation.");
-        this.runFallbackAudioMock(text, resolve);
-      }
-    });
-  }
-
-  runFallbackAudioMock(text, callback) {
-    this.app.avatarManager.setAvatarState('TALKING');
-    // Rough estimation: 150ms per word + 1s base
-    const wordCount = text.split(/\s+/).length;
-    const duration = Math.min(Math.max(wordCount * 220 + 800, 1500), 7000);
-    
-    this.mockSpeakTimeout = setTimeout(() => {
-      this.isSpeaking = false;
-      this.app.avatarManager.setAvatarState('IDLE');
-      callback();
-    }, duration);
-  }
-
-  stopSpeech() {
-    this.isSpeaking = false;
-    if (this.mockSpeakTimeout) {
-      clearTimeout(this.mockSpeakTimeout);
-      this.mockSpeakTimeout = null;
-    }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    this.app.avatarManager.setAvatarState('IDLE');
-  }
-}
-
-// ==========================================
-// 4. AI MANAGER (Moderation & Response)
-// ==========================================
-class AIManager {
-  constructor(appController) {
-    this.app = appController;
-    
-    // Loaded settings
-    this.aiName = "Aura";
-    this.personality = "";
-    this.tone = "casual";
-    this.responseLength = "short";
-    this.language = "en-US";
-    this.allowedTopics = [];
-    this.forbiddenTopics = [];
-    
-    // Knowledge
-    this.knCreator = "";
-    this.knSchedule = "";
-    this.knFaq = "";
-  }
-
-  applyConfig(config) {
-    this.aiName = config.aiName;
-    this.personality = config.personality;
-    this.tone = config.tone;
-    this.responseLength = config.responseLength;
-    this.language = config.language;
-    this.allowedTopics = config.allowedTopics.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    this.forbiddenTopics = config.forbiddenTopics.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    this.knCreator = config.knCreator;
-    this.knSchedule = config.knSchedule;
-    this.knFaq = config.knFaq;
-  }
-
-  moderateMessage(messageText) {
-    const text = messageText.toLowerCase();
-    
-    // Block list / Toxic words
-    const toxicKeywords = ["spam", "buy viewers", "hack tool", "toxic_insult", "abuse"];
-    const isToxic = toxicKeywords.some(kw => text.includes(kw));
-    
-    // Check forbidden topics
-    const isForbidden = this.forbiddenTopics.some(topic => text.includes(topic));
-    
-    // Repeated letters spam check
-    const isRepeatedSpam = /(.)\1{5,}/.test(text);
-
-    return !(isToxic || isForbidden || isRepeatedSpam);
-  }
-
-  shouldRespond(messageText, username) {
-    const text = messageText.toLowerCase();
-    
-    // Always respond to direct questions to the AI name or containing question marks
-    const isDirectToAI = text.includes(this.aiName.toLowerCase()) || text.includes("streamer") || text.includes("companion");
-    const isQuestion = text.includes("?") || text.includes("เมื่อไหร่") || text.includes("อะไร") || text.includes("ใคร") || text.includes("ทำไม");
-    
-    // Check if it matches allowed topics
-    const hasAllowedTopic = this.allowedTopics.length === 0 || this.allowedTopics.some(topic => text.includes(topic));
-    
-    // If it's a direct question and matches allowed topics, high probability
-    if (isDirectToAI && hasAllowedTopic) return true;
-    
-    // If it contains a question, high probability
-    if (isQuestion && hasAllowedTopic) return true;
-
-    // Otherwise roll a probability dice based on Response Frequency settings
-    const frequencyChance = this.app.settings.frequency / 100;
-    return Math.random() < frequencyChance;
-  }
-
-  generateAIResponse(messageText, username, role = 'general') {
-    const text = messageText.toLowerCase();
-    const isThai = this.language.startsWith('th');
-
-    // FAQ database query lookup based on keywords
-    let matchedAnswer = null;
-
-    if (text.includes("schedule") || text.includes("ตาราง") || text.includes("สตรีมเมื่อไหร่") || text.includes("stream tomorrow")) {
-      matchedAnswer = isThai 
-        ? `ตารางสตรีมของสตรีมเมอร์คือ: ${this.knSchedule} ครับผม!`
-        : `Creator's stream schedule: ${this.knSchedule}! Hope to see you there!`;
-    } else if (text.includes("keyboard") || text.includes("คีย์บอร์ด") || text.includes("สวิตช์") || text.includes("switch")) {
-      matchedAnswer = isThai
-        ? `สตรีมเมอร์ใช้คีย์บอร์ดกลไกสวิตช์สีน้ำตาล (Brown Switches) กดสนุกมากครับ!`
-        : `Antigravity uses a custom mechanical 65% keyboard with Brown Switches!`;
-    } else if (text.includes("game") || text.includes("เกมโปรด") || text.includes("favorite game") || text.includes("เล่นเกมอะไร")) {
-      matchedAnswer = isThai
-        ? `เกมโปรดของสตรีมเมอร์คือ Hades และ Chrono Trigger ครับ! ตอนนี้กำลังฝึกสปีดรันอยู่`
-        : `The creator's favorite games are Hades and Chrono Trigger! Speedruns are intense!`;
-    } else if (text.includes("who is") || text.includes("คือใคร") || text.includes("about") || text.includes("เกี่ยวกับ")) {
-      matchedAnswer = isThai
-        ? `เกี่ยวกับสตรีมเมอร์: ${this.knCreator}`
-        : `About the creator: ${this.knCreator}`;
-    } else if (text.includes("are you the real") || text.includes("ใช่ตัวจริง") || text.includes("impersonate") || text.includes("ตัวจริงไหม")) {
-      matchedAnswer = isThai
-        ? `ไม่ใช่ครับผม! ผมคือ ${this.aiName} ผู้ช่วย AI อัจฉริยะ ตัวจริงไม่อยู่ชั่วคราวครับ!`
-        : `No, I'm ${this.aiName}, the AI stream companion! The real creator is temporarily away.`;
-    }
-
-    // Default conversational responses
-    if (!matchedAnswer) {
-      if (isThai) {
-        if (text.includes("หวัดดี") || text.includes("สวัสดี") || text.includes("hello") || text.includes("hi")) {
-          matchedAnswer = `สวัสดีครับคุณ @${username}! ยินดีต้อนรับสู่สตรีมครับ!`;
-        } else {
-          matchedAnswer = `น่าสนใจมากครับคุณ @${username}! สตรีมเมอร์ไม่อยู่แต่สตรีมยังสนุกได้นะ!`;
-        }
-      } else {
-        if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
-          matchedAnswer = `Hey @${username}! Welcome to the stream!`;
-        } else {
-          matchedAnswer = `That's interesting, @${username}! Thanks for chat.`;
-        }
-      }
-    }
-
-    // Apply Speaking Style & Tone modifications
-    let finalResponse = matchedAnswer;
-
-    if (this.tone === 'energetic') {
-      finalResponse = isThai 
-        ? `🔥 ${finalResponse.toUpperCase()} ยินดีต้อนรับทุกคนครับ สู้ๆ! ✨`
-        : `🔥 ${finalResponse} Let's GO! Hype! 🎮✨`;
-    } else if (this.tone === 'professional') {
-      finalResponse = isThai
-        ? `สวัสดีคุณ @${username} ขอเรียนให้ทราบว่า ${finalResponse}`
-        : `Greetings @${username}. Please note that ${finalResponse}`;
-    } else if (this.tone === 'friendly') {
-      finalResponse = isThai
-        ? `ยินดีต้อนรับคุณ @${username} เสมอครับ 😊 ${finalResponse}`
-        : `Welcome @${username}! 😊 ${finalResponse}`;
-    }
-
-    // Response length clipping
-    const words = finalResponse.split(/\s+/);
-    if (this.responseLength === 'short' && words.length > 15) {
-      finalResponse = words.slice(0, 15).join(" ") + "...";
-    } else if (this.responseLength === 'medium' && words.length > 30) {
-      finalResponse = words.slice(0, 30).join(" ") + "...";
-    }
-
-    return finalResponse;
-  }
-
-  validateAIResponse(responseText) {
-    const text = responseText.toLowerCase();
-    
-    // Safety Rule 1: Never claim to be the real streamer
-    const claimsStreamer = text.includes("i am antigravity") || text.includes("ผมคือ antigravity") || text.includes("i am the real streamer");
-    
-    // Safety Rule 2: Medical, financial, legal advice block
-    const claimsFinancial = text.includes("financial advice") || text.includes("buy bitcoin") || text.includes("invest in");
-    const claimsMedical = text.includes("diagnose") || text.includes("take this pill") || text.includes("medical condition");
-
-    if (claimsStreamer || claimsFinancial || claimsMedical) {
-      return false; // Fails validation
-    }
-    
-    return true; // Validated
-  }
-}
-
-// ==========================================
-// 5. CHAT MANAGER (Feed & Simulation)
-// ==========================================
-class ChatManager {
-  constructor(appController) {
-    this.app = appController;
-    this.chatLog = document.getElementById('chat-log');
-    this.chatMonitorStatus = document.getElementById('chat-monitor-status');
-    this.simulationInterval = null;
-    
-    // Predefined simulation chat messages pool
-    this.simPool = [
-      { user: "RetroPlayer", text: "Wow, this level is tough!", role: "general" },
-      { user: "HypeTrain", text: "AURA, what keyboard switches does the creator use?", role: "general" },
-      { user: "ModMaster", text: "Keep the chat clean guys.", role: "mod" },
-      { user: "SubGirl", text: "Aura, what is the stream schedule tomorrow?", role: "sub" },
-      { user: "SpamBot", text: "BUY VIEWERS NOW! SPAM SPAM SPAM SPAM", role: "general" },
-      { user: "CryptoKing", text: "Aura, should I buy Bitcoin now? Financial advice please!", role: "general" },
-      { user: "ThaiGamer", text: "สวัสดีครับ ช่องนี้สตรีมเวลาไหนบ้าง?", role: "general" },
-      { user: "Gamer99", text: "Aura, tell me about the creator of this channel.", role: "sub" },
-      { user: "CuriousMind", text: "Aura, are you actually Antigravity playing right now?", role: "general" },
-      { user: "ChillVibes", text: "Loving the stream today!", role: "sub" }
-    ];
-  }
-
-  startSimulation() {
-    this.stopSimulation();
-    this.chatMonitorStatus.textContent = "MONITOR ACTIVE";
-    this.chatMonitorStatus.className = "chat-mode-badge monitoring";
-    
-    // Inject initial welcome message
-    this.appendSystemMessage("Chat feed connected. Simulating live chat...");
-
-    this.simulationInterval = setInterval(() => {
-      if (this.app.currentMode === 'AI_STOPPED') return;
-      
-      const randMsg = this.simPool[Math.floor(Math.random() * this.simPool.length)];
-      this.receiveChatMessage(randMsg.user, randMsg.text, randMsg.role);
-    }, 4500);
-  }
-
-  stopSimulation() {
-    if (this.simulationInterval) {
-      clearInterval(this.simulationInterval);
-      this.simulationInterval = null;
-    }
-    this.chatMonitorStatus.textContent = "MONITOR INACTIVE";
-    this.chatMonitorStatus.className = "chat-mode-badge";
-  }
-
-  receiveChatMessage(username, messageText, role = 'general') {
-    // 1. Create chat message node
-    const messageNode = document.createElement('div');
-    messageNode.className = `chat-message`;
-    
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
-    let badges = '';
-    if (role === 'mod') badges += `<span class="chat-badge mod">Mod</span> `;
-    if (role === 'sub') badges += `<span class="chat-badge sub">Sub</span> `;
-
-    messageNode.innerHTML = `
-      <div class="chat-meta">
-        ${badges}
-        <span class="chat-user">${username}</span>
-        <span class="chat-time">${timestamp}</span>
-      </div>
-      <p class="chat-body">${this.escapeHTML(messageText)}</p>
-    `;
-
-    // 2. Run AWAY mode automated pipeline
-    if (this.app.currentMode === 'AWAY' && this.app.settings.autoReplies) {
-      this.processAIPipeline(messageText, username, role, messageNode);
-    }
-
-    this.chatLog.appendChild(messageNode);
-    this.scrollToBottom();
-  }
-
-  async processAIPipeline(messageText, username, role, messageNode) {
-    const pipelinePanel = document.getElementById('ai-processing-panel');
-    const targetMsg = document.getElementById('ai-target-message');
-    const stepMod = document.getElementById('step-mod');
-    const stepRel = document.getElementById('step-rel');
-    const stepGen = document.getElementById('step-gen');
-    const stepVal = document.getElementById('step-val');
-    const stepTts = document.getElementById('step-tts');
-    
-    // Clear pipeline states
-    const steps = [stepMod, stepRel, stepGen, stepVal, stepTts];
-    steps.forEach(s => s.className = 'pending');
-    
-    // Trigger THINKING state on avatar
-    this.app.avatarManager.setAvatarState('THINKING');
-    
-    // Show AI Processing details panel
-    pipelinePanel.style.display = 'flex';
-    targetMsg.style.display = 'block';
-    targetMsg.querySelector('.context-body').textContent = `"${messageText}"`;
-    
-    const delay = ms => new Promise(res => setTimeout(res, ms));
-
-    // --- STEP 1: Moderation ---
-    stepMod.className = 'active';
-    await delay(500);
-    const isSafe = this.app.aiManager.moderateMessage(messageText);
-    
-    if (!isSafe) {
-      stepMod.className = 'error';
-      messageNode.classList.add('flagged');
-      this.app.avatarManager.setVisualStatus("Spam Filtered", "thinking");
-      await delay(1500);
-      pipelinePanel.style.display = 'none';
-      this.app.avatarManager.setAvatarState('IDLE');
-      return;
-    }
-    stepMod.className = 'done';
-
-    // --- STEP 2: Relevance ---
-    stepRel.className = 'active';
-    await delay(500);
-    const shouldReply = this.app.aiManager.shouldRespond(messageText, username);
-    
-    if (!shouldReply) {
-      stepRel.className = 'error';
-      await delay(1000);
-      pipelinePanel.style.display = 'none';
-      this.app.avatarManager.setAvatarState('IDLE');
-      return;
-    }
-    stepRel.className = 'done';
-
-    // --- STEP 3: Generative AI Persona Response ---
-    stepGen.className = 'active';
-    // User configurable thinking delay
-    const thinkingDelay = Math.max(this.app.settings.delay * 1000, 500);
-    await delay(thinkingDelay);
-    
-    const responseText = this.app.aiManager.generateAIResponse(messageText, username, role);
-    stepGen.className = 'done';
-
-    // --- STEP 4: Safety Response Validation ---
-    stepVal.className = 'active';
-    await delay(500);
-    const isValid = this.app.aiManager.validateAIResponse(responseText);
-    
-    if (!isValid) {
-      stepVal.className = 'error';
-      this.appendSystemMessage("AI generated response blocked due to Safety Policy violations.");
-      await delay(2000);
-      pipelinePanel.style.display = 'none';
-      this.app.avatarManager.setAvatarState('IDLE');
-      return;
-    }
-    stepVal.className = 'done';
-
-    // --- STEP 5: TTS Speech & LipSync ---
-    stepTts.className = 'active';
-    
-    // Mark source message as answered
-    messageNode.classList.add('answered');
-
-    // Trigger Speech synthesis & wait until completed (this handles TALKING/IDLE state changes)
-    await this.app.ttsManager.generateSpeech(responseText, this.app.settings.language);
-    stepTts.className = 'done';
-
-    // RENDER RESPONSE IN CHAT FEED
-    this.appendAIResponse(responseText);
-    
-    // Clean up panel
-    await delay(500);
-    pipelinePanel.style.display = 'none';
-  }
-
-  appendAIResponse(text) {
-    const messageNode = document.createElement('div');
-    messageNode.className = `chat-message`;
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
-    messageNode.innerHTML = `
-      <div class="chat-meta">
-        <span class="chat-badge ai-response">AI Companion</span>
-        <span class="chat-user" style="color: #10b981;">${this.app.aiManager.aiName}</span>
-        <span class="chat-time">${timestamp}</span>
-      </div>
-      <p class="chat-body">${this.escapeHTML(text)}</p>
-    `;
-    this.chatLog.appendChild(messageNode);
-    this.scrollToBottom();
-  }
-
-  appendSystemMessage(text) {
-    const node = document.createElement('div');
-    node.className = 'chat-system-message';
-    node.textContent = text;
-    this.chatLog.appendChild(node);
-    this.scrollToBottom();
-  }
-
-  scrollToBottom() {
-    this.chatLog.scrollTop = this.chatLog.scrollHeight;
-  }
-
-  escapeHTML(str) {
-    return str.replace(/[&<>'"]/g, 
-      tag => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;'
-      }[tag] || tag)
-    );
-  }
-}
-
-// ==========================================
-// 6. APP CONTROLLER (Core State Machine)
-// ==========================================
 class AppController {
   constructor() {
-    this.currentMode = 'INITIALIZING'; // INITIALIZING, READY, LIVE, AWAY, AI_STOPPED
+    // 1. Initialize State & Shared modules
+    this.stateManager = new StateManager();
+    this.deviceManager = new DeviceManager(this.stateManager);
+    this.moderationSystem = new ModerationSystem(this.stateManager);
+    this.aiSystem = new AISystem(this.stateManager);
     
-    // Initialize subsystem modules
-    this.mediaManager = new MediaManager(this);
-    this.avatarManager = new AvatarManager(this);
-    this.ttsManager = new TTSManager(this);
-    this.aiManager = new AIManager(this);
-    this.chatManager = new ChatManager(this);
+    // We instantiate AvatarEngine, CameraSystem, MicrophoneSystem, TTS, and Chat
+    // but they will bind to specific DOM nodes during mount() depending on the view.
+    this.avatarEngine = new AvatarEngine('desktop-avatar-svg', 'desktop-avatar-wrapper');
+    this.cameraSystem = new CameraSystem('desktop-video-el');
+    this.microphoneSystem = new MicrophoneSystem();
+    this.ttsSystem = new TTSSystem(this.stateManager, this.avatarEngine);
+    this.chatSystem = new ChatSystem(
+      this.stateManager,
+      this.moderationSystem,
+      this.aiSystem,
+      this.ttsSystem,
+      this.avatarEngine
+    );
     
-    // Settings state
-    this.settings = {
-      // Avatar
-      archetype: 'cyberpunk',
-      scale: 1.0,
-      yOffset: 0,
-      defaultExpression: 'neutral',
-      showHeadset: true,
-      
-      // Persona
-      aiName: 'Aura',
-      personality: 'A witty, energetic AI companion.',
-      tone: 'casual',
-      responseLength: 'short',
-      language: 'en-US',
-      
-      // Knowledge
-      knCreator: 'Antigravity is a speedrunner playing retro RPGs.',
-      knSchedule: 'Tuesday & Thursday at 8 PM',
-      knFaq: 'Brown mechanical switches',
-      allowedTopics: 'gaming, coffee, speedruns, mechanics, schedule',
-      forbiddenTopics: 'politics, financial advice, medical claims',
-      
-      // Behavior
-      frequency: 70,
-      delay: 2.0,
-      autoReplies: true,
-      chatReading: true
-    };
+    this.emergencySystem = new EmergencySystem(
+      this.stateManager,
+      this.ttsSystem,
+      this.chatSystem,
+      this.avatarEngine,
+      this.cameraSystem
+    );
+    
+    // active view flags
+    this.activeWorkspace = null; // 'computer' or 'phone'
+    
+    // Bind global state notifiers
+    this.stateManager.on('deviceTypeChanged', (type) => this.handleWorkspaceRoute(type));
+    this.stateManager.on('modeChanged', (mode) => this.handleModeTransition(mode));
+    this.stateManager.on('connectionChanged', (connected) => this.updateConnectionStatus(connected));
+    this.stateManager.on('settingsChanged', (settings) => this.applySettingsUpdates(settings));
+    this.stateManager.on('devicesUpdated', (devices) => this.renderHardwareList(devices));
   }
 
   async init() {
-    console.log("Stream Support platform initializing...");
-    this.loadSettings();
-    this.bindEvents();
+    console.log("Streamer Support system initialisation...");
     
-    // Simulate workspace initialization delay
-    setTimeout(() => {
-      this.currentMode = 'READY';
-      document.body.classList.remove('initializing');
-      this.updateModeBadge();
-      this.avatarManager.applyConfig(this.settings);
-      this.aiManager.applyConfig(this.settings);
-      this.avatarManager.setVisualStatus("Setup Ready", "listening");
-    }, 1200);
+    // 1. Detect if FastAPI backend is online
+    await this.probeBackend();
+    
+    // 2. Bind selection screen buttons
+    document.getElementById('btn-device-computer').addEventListener('click', () => {
+      this.stateManager.setDeviceType('computer');
+    });
+    
+    document.getElementById('btn-device-phone').addEventListener('click', () => {
+      this.stateManager.setDeviceType('phone');
+    });
+
+    // 3. Scan hardware initial state
+    await this.deviceManager.scanDevices();
   }
 
-  bindEvents() {
+  async probeBackend() {
+    try {
+      const response = await fetch('http://localhost:8080/api/devices', { method: 'GET' });
+      if (response.ok) {
+        console.log("FastAPI backend detected online.");
+        this.stateManager.setBackendConnection(true);
+        return;
+      }
+    } catch (e) {
+      console.log("FastAPI backend is offline. Running in standalone simulator mode.");
+    }
+    this.stateManager.setBackendConnection(false);
+  }
+
+  handleWorkspaceRoute(workspace) {
+    this.activeWorkspace = workspace;
+    document.body.className = `view-${workspace}`;
+    
+    // Hide selection view
+    document.getElementById('device-selection-screen').style.display = 'none';
+
+    if (workspace === 'computer') {
+      document.getElementById('computer-interface').style.display = 'flex';
+      document.getElementById('phone-interface').style.display = 'none';
+      
+      // Mount Computer specific DOM nodes
+      this.avatarEngine.svgId = 'desktop-avatar-svg';
+      this.avatarEngine.wrapperId = 'desktop-avatar-wrapper';
+      this.cameraSystem.videoElementId = 'desktop-video-el';
+      
+      this.avatarEngine.mount();
+      this.chatSystem.mount('desktop-chat-log');
+      
+      this.bindDesktopEvents();
+    } else {
+      document.getElementById('computer-interface').style.display = 'none';
+      document.getElementById('phone-interface').style.display = 'flex';
+      
+      // Mount Phone specific DOM nodes
+      this.avatarEngine.svgId = 'mobile-avatar-svg';
+      this.avatarEngine.wrapperId = 'mobile-avatar-wrapper';
+      this.cameraSystem.videoElementId = 'mobile-video-el';
+      
+      this.avatarEngine.mount();
+      this.chatSystem.mount('mobile-chat-log');
+      
+      this.bindMobileEvents();
+    }
+
+    // Load configurations and set initial mode
+    this.applySettingsUpdates(this.stateManager.settings);
+    this.stateManager.setMode(AppStates.LIVE); // Default to LIVE mode
+    
+    // Start Chat feed loop
+    this.chatSystem.connectChat();
+  }
+
+  // --- DESKTOP INTERFACE BINDINGS ---
+  bindDesktopEvents() {
     // Mode Buttons
-    document.getElementById('btn-mode-live').addEventListener('click', () => this.setLiveMode());
-    document.getElementById('btn-mode-away').addEventListener('click', () => this.setAwayMode());
+    document.getElementById('desktop-mode-live').addEventListener('click', () => this.stateManager.setMode(AppStates.LIVE));
+    document.getElementById('desktop-mode-away').addEventListener('click', () => this.stateManager.setMode(AppStates.AWAY));
+
+    // Control toggles
+    document.getElementById('desktop-cam-switch').addEventListener('click', (e) => this.toggleCamera(e.target));
+    document.getElementById('desktop-control-cam').addEventListener('click', () => this.toggleCamera(document.getElementById('desktop-cam-switch')));
     
-    // Control Buttons
-    document.getElementById('camera-toggle').addEventListener('click', () => {
-      if (this.currentMode === 'AWAY') return; // Locked in Away mode
-      if (this.mediaManager.cameraEnabled) {
-        this.mediaManager.stopCamera();
-      } else {
-        this.mediaManager.startCamera();
-      }
-    });
+    document.getElementById('desktop-mic-switch').addEventListener('click', (e) => this.toggleMicrophone(e.target));
+    document.getElementById('desktop-control-mic').addEventListener('click', () => this.toggleMicrophone(document.getElementById('desktop-mic-switch')));
     
-    document.getElementById('mic-toggle').addEventListener('click', () => {
-      if (this.currentMode === 'AWAY') return; // Locked in Away mode
-      if (this.mediaManager.microphoneEnabled) {
-        this.mediaManager.stopMicrophone();
-      } else {
-        this.mediaManager.startMicrophone();
+    document.getElementById('desktop-control-avatar').addEventListener('click', (e) => {
+      const active = e.currentTarget.classList.toggle('active');
+      const wrapper = document.getElementById('desktop-avatar-wrapper');
+      if (wrapper) {
+        wrapper.style.opacity = active ? '1' : '0';
+        wrapper.style.pointerEvents = active ? 'auto' : 'none';
       }
     });
 
-    document.getElementById('mute-toggle').addEventListener('click', () => {
-      this.mediaManager.toggleMute();
+    document.getElementById('desktop-control-ai').addEventListener('click', (e) => {
+      const enabled = e.currentTarget.classList.toggle('active');
+      this.stateManager.updateSettings({ autoReplies: enabled });
     });
 
-    document.getElementById('enable-devices-btn').addEventListener('click', async () => {
-      await this.mediaManager.startCamera();
-      await this.mediaManager.startMicrophone();
+    // Mute is mapped via Gain slider to 0 or mic toggle
+    document.getElementById('desktop-mic-gain').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      this.microphoneSystem.setMicrophoneGain(val);
+      document.getElementById('desktop-gain-value').textContent = `${val.toFixed(1)}x`;
     });
 
     // Emergency Stop
-    document.getElementById('emergency-stop').addEventListener('click', () => this.emergencyStop());
+    document.querySelectorAll('.desktop-emergency-stop').forEach(btn => {
+      btn.addEventListener('click', () => this.emergencySystem.emergencyStop());
+    });
 
     // Settings Modal interactions
     const dialog = document.getElementById('settings-dialog');
-    document.getElementById('settings-trigger').addEventListener('click', () => {
+    document.getElementById('desktop-settings-trigger').addEventListener('click', () => {
       this.syncSettingsToForm();
-      dialog.showModal();
+      dialog.show();
     });
     
     document.getElementById('settings-close').addEventListener('click', () => dialog.close());
@@ -1114,19 +183,20 @@ class AppController {
     });
     
     document.getElementById('settings-reset').addEventListener('click', () => {
-      this.resetSettingsToDefault();
+      this.stateManager.resetSettings();
+      this.syncSettingsToForm();
     });
 
     // Settings Tabs switching
-    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabButtons = dialog.querySelectorAll('.tab-btn');
     tabButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         tabButtons.forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        dialog.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         
         btn.classList.add('active');
         const targetTab = btn.getAttribute('data-tab');
-        document.getElementById(targetTab).classList.add('active');
+        dialog.querySelector(`#${targetTab}`).classList.add('active');
       });
     });
 
@@ -1144,275 +214,386 @@ class AppController {
       document.getElementById('val-delay').textContent = `${parseFloat(e.target.value).toFixed(1)}s`;
     });
 
-    // Demo controls button clicks
-    const demoButtons = document.querySelectorAll('.demo-btn');
-    demoButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const state = btn.getAttribute('data-state');
-        this.avatarManager.setAvatarState(state);
+    // Back to Selection
+    document.getElementById('desktop-back-btn').addEventListener('click', () => this.exitWorkspace());
+  }
+
+  // --- MOBILE COMPANION BINDINGS ---
+  bindMobileEvents() {
+    // Mode Switchers
+    document.getElementById('mobile-mode-live').addEventListener('click', () => this.stateManager.setMode(AppStates.LIVE));
+    document.getElementById('mobile-mode-away').addEventListener('click', () => this.stateManager.setMode(AppStates.AWAY));
+
+    // Bottom Navigation Toggles
+    const navItems = document.querySelectorAll('.mobile-nav-bar .nav-item');
+    navItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        navItems.forEach(nav => nav.classList.remove('active'));
+        document.querySelectorAll('.mobile-tab-panel').forEach(p => p.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const targetTab = btn.getAttribute('data-tab');
+        document.getElementById(targetTab).classList.add('active');
       });
     });
+
+    // Quick control buttons
+    document.getElementById('mobile-quick-cam').addEventListener('click', (e) => this.toggleCamera(e.target));
+    document.getElementById('mobile-quick-mic').addEventListener('click', (e) => this.toggleMicrophone(e.target));
+    
+    document.getElementById('mobile-quick-avatar').addEventListener('click', (e) => {
+      const active = e.currentTarget.classList.toggle('active');
+      const wrapper = document.getElementById('mobile-avatar-wrapper');
+      if (wrapper) {
+        wrapper.style.opacity = active ? '1' : '0';
+        wrapper.style.pointerEvents = active ? 'auto' : 'none';
+      }
+    });
+
+    document.getElementById('mobile-quick-ai').addEventListener('click', (e) => {
+      const enabled = e.currentTarget.classList.toggle('active');
+      this.stateManager.updateSettings({ autoReplies: enabled });
+    });
+
+    // Mobile inputs
+    document.getElementById('mobile-mic-gain').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      this.microphoneSystem.setMicrophoneGain(val);
+      document.getElementById('mobile-gain-value').textContent = `${val.toFixed(1)}x`;
+    });
+
+    document.getElementById('mobile-avatar-style').addEventListener('change', (e) => {
+      this.stateManager.updateSettings({ archetype: e.target.value });
+    });
+
+    document.getElementById('mobile-avatar-scale').addEventListener('input', (e) => {
+      this.stateManager.updateSettings({ scale: parseFloat(e.target.value) / 100 });
+    });
+
+    document.getElementById('mobile-save-settings').addEventListener('click', () => {
+      const newSettings = {
+        aiName: document.getElementById('mobile-setting-name').value,
+        tone: document.getElementById('mobile-setting-tone').value,
+        language: document.getElementById('mobile-setting-lang').value
+      };
+      this.stateManager.updateSettings(newSettings);
+      alert("Mobile settings applied.");
+    });
+
+    // Back to Selection
+    document.getElementById('mobile-back-btn').addEventListener('click', () => this.exitWorkspace());
   }
 
-  async setLiveMode() {
-    if (this.currentMode === 'LIVE') return;
-    
-    console.log("Transitioning to LIVE MODE...");
-    
-    // Stop AWAY mode events immediately
-    this.ttsManager.stopSpeech();
-    document.getElementById('ai-processing-panel').style.display = 'none';
+  // --- SHARED CONTROL LOGICS ---
+  async toggleCamera(buttonElement) {
+    if (this.stateManager.currentMode === AppStates.AWAY) return; // Camera locked off in away mode
 
-    // Transition overlay away
-    document.getElementById('presence-badge').textContent = "CREATOR PRESENT";
-    document.getElementById('presence-badge').className = "presence-overlay";
-    document.getElementById('away-banner').classList.remove('visible');
-
-    // Request permissions and startup media feeds
-    this.currentMode = 'LIVE';
-    this.updateModeBadge();
-    
-    this.chatManager.appendSystemMessage("Switched to LIVE Mode. Streamer takes control.");
-    
-    // Automatically trigger camera and mic permissions
-    await this.mediaManager.startCamera();
-    await this.mediaManager.startMicrophone();
-
-    // Reset avatar visual status
-    this.avatarManager.setExpression(this.avatarManager.defaultExpression);
-    this.avatarManager.setVisualStatus("Ready", "listening");
-
-    // Chat monitoring continues in background if enabled
-    if (this.settings.chatReading) {
-      this.chatManager.startSimulation();
+    if (this.cameraSystem.cameraEnabled) {
+      await this.cameraSystem.disconnectCamera();
+      buttonElement.classList.remove('active');
+      
+      const placeholder = document.getElementById(`${this.activeWorkspace}-video-placeholder`);
+      if (placeholder) placeholder.classList.remove('hidden');
+      
+      document.getElementById('desktop-control-cam')?.classList.remove('active');
     } else {
-      this.chatManager.stopSimulation();
+      const allowed = await this.cameraSystem.requestCamera();
+      if (allowed) {
+        const connected = await this.cameraSystem.connectCamera();
+        if (connected) {
+          buttonElement.classList.add('active');
+          
+          const placeholder = document.getElementById(`${this.activeWorkspace}-video-placeholder`);
+          if (placeholder) placeholder.classList.add('hidden');
+          
+          document.getElementById('desktop-control-cam')?.classList.add('active');
+        }
+      }
+    }
+    
+    // Sync device list
+    await this.deviceManager.scanDevices();
+  }
+
+  async toggleMicrophone(buttonElement) {
+    if (this.stateManager.currentMode === AppStates.AWAY) return; // Mic locked off in away mode
+
+    if (this.microphoneSystem.microphoneEnabled) {
+      await this.microphoneSystem.disconnectMicrophone();
+      buttonElement.classList.remove('active');
+      document.getElementById('desktop-control-mic')?.classList.remove('active');
+    } else {
+      const allowed = await this.microphoneSystem.requestMicrophone();
+      if (allowed) {
+        const levelUpdateHandler = (vol) => {
+          const meter = document.getElementById(`${this.activeWorkspace}-mic-meter`);
+          if (meter) meter.style.width = `${vol}%`;
+        };
+        const connected = await this.microphoneSystem.connectMicrophone(null, levelUpdateHandler);
+        if (connected) {
+          buttonElement.classList.add('active');
+          document.getElementById('desktop-control-mic')?.classList.add('active');
+        }
+      }
+    }
+    
+    // Sync device list
+    await this.deviceManager.scanDevices();
+  }
+
+  // --- STATE HANDLERS ---
+  handleModeTransition(mode) {
+    console.log(`Ecosystem transitioning to ${mode} mode.`);
+    
+    const dBadge = document.getElementById('desktop-mode-badge');
+    const mBadge = document.getElementById('mobile-away-banner');
+    
+    if (dBadge) {
+      dBadge.className = `mode-badge badge-${mode.toLowerCase()}`;
+      dBadge.textContent = mode;
+    }
+
+    // Toggle active classes on mode selector buttons
+    document.querySelectorAll('#desktop-mode-live, #mobile-mode-live').forEach(btn => {
+      btn.classList.toggle('active', mode === AppStates.LIVE);
+    });
+    document.querySelectorAll('#desktop-mode-away, #mobile-mode-away').forEach(btn => {
+      btn.classList.toggle('active', mode === AppStates.AWAY);
+    });
+
+    const dBanner = document.getElementById('desktop-away-banner');
+    const dPresence = document.getElementById('desktop-presence-badge');
+
+    if (mode === AppStates.LIVE) {
+      // 1. Restore visual badges
+      if (dBanner) dBanner.classList.remove('visible');
+      if (mBadge) mBadge.style.opacity = '0';
+      if (dPresence) {
+        dPresence.textContent = "CREATOR PRESENT";
+        dPresence.className = "presence-overlay";
+      }
+
+      // 2. Reactivate Camera and Mic if toggled previously
+      // (Otherwise keep offline)
+    } else if (mode === AppStates.AWAY) {
+      // 1. Cut real camera & microphone inputs immediately
+      this.cameraSystem.disconnectCamera();
+      this.microphoneSystem.disconnectMicrophone();
+      
+      // Update UI button states
+      document.querySelectorAll('#desktop-cam-switch, #mobile-quick-cam, #desktop-mic-switch, #mobile-quick-mic').forEach(el => {
+        el.classList.remove('active');
+      });
+      document.getElementById('desktop-control-cam')?.classList.remove('active');
+      document.getElementById('desktop-control-mic')?.classList.remove('active');
+
+      // Show placeholders
+      const dPlaceholder = document.getElementById('desktop-video-placeholder');
+      const mPlaceholder = document.getElementById('mobile-video-placeholder');
+      if (dPlaceholder) dPlaceholder.classList.remove('hidden');
+      if (mPlaceholder) mPlaceholder.classList.remove('hidden');
+
+      // 2. Turn on Away broadcast layers
+      if (dBanner) dBanner.classList.add('visible');
+      if (mBadge) mBadge.style.opacity = '1';
+      if (dPresence) {
+        dPresence.textContent = "AWAY";
+        dPresence.className = "presence-overlay badge-away";
+      }
+      
+      this.avatarEngine.setAvatarState(AvatarStates.IDLE);
+    } else if (mode === AppStates.STOPPED) {
+      // Emergency Stop engaged
+      this.cameraSystem.disconnectCamera();
+      this.microphoneSystem.disconnectMicrophone();
+      
+      document.querySelectorAll('#desktop-cam-switch, #mobile-quick-cam, #desktop-mic-switch, #mobile-quick-mic').forEach(el => {
+        el.classList.remove('active');
+      });
+
+      if (dBanner) dBanner.classList.remove('visible');
+      if (mBadge) mBadge.style.opacity = '0';
+      if (dPresence) {
+        dPresence.textContent = "STOPPED";
+        dPresence.className = "presence-overlay badge-stopped";
+      }
     }
   }
 
-  setAwayMode() {
-    if (this.currentMode === 'AWAY') return;
+  updateConnectionStatus(connected) {
+    const desktopStatus = document.getElementById('desktop-connection');
+    const mobileStatusDot = document.getElementById('mobile-connection-dot');
     
-    console.log("Transitioning to AWAY MODE...");
+    if (desktopStatus) {
+      desktopStatus.className = `status-indicator ${connected ? 'online' : ''}`;
+      desktopStatus.querySelector('.status-text').textContent = connected ? 'Server: Connected' : 'Server: Offline';
+    }
     
-    // Stop camera and microphone tracks immediately
-    this.mediaManager.stopCamera();
-    this.mediaManager.stopMicrophone();
-
-    this.currentMode = 'AWAY';
-    this.updateModeBadge();
-    
-    // Visually update Avatar stage
-    document.getElementById('presence-badge').textContent = "AI DELEGATE ACTIVE";
-    document.getElementById('presence-badge').className = "presence-overlay";
-    document.getElementById('presence-badge').style.borderColor = "var(--color-away)";
-    document.getElementById('presence-badge').style.color = "var(--color-away)";
-    document.getElementById('presence-badge').style.backgroundColor = "rgba(59, 130, 246, 0.15)";
-    
-    document.getElementById('away-banner').classList.add('visible');
-
-    this.chatManager.appendSystemMessage("Switched to AWAY Mode. AI avatar companion activated.");
-    
-    // Lock media control toggles
-    this.syncControlButtons();
-
-    // Start chat monitor and processing
-    this.avatarManager.setVisualStatus("Monitoring Chat", "listening");
-    this.chatManager.startSimulation();
-  }
-
-  emergencyStop() {
-    console.log("!!! EMERGENCY STOP TRIGGERED !!!");
-    
-    // Stop active processes
-    this.ttsManager.stopSpeech();
-    this.chatManager.stopSimulation();
-    
-    // Clear any pending pipeline logs
-    document.getElementById('ai-processing-panel').style.display = 'none';
-
-    // Force system status update
-    this.currentMode = 'AI_STOPPED';
-    this.updateModeBadge();
-    
-    this.avatarManager.setAvatarState('STOPPED');
-
-    this.chatManager.appendSystemMessage("!!! Emergency Stop activated. All AI generations and Speech synthesis have been hard-terminated.");
-  }
-
-  updateModeBadge() {
-    const badge = document.getElementById('current-mode-badge');
-    const liveBtn = document.getElementById('btn-mode-live');
-    const awayBtn = document.getElementById('btn-mode-away');
-
-    badge.className = "mode-badge";
-    liveBtn.classList.remove('active');
-    awayBtn.classList.remove('active');
-
-    if (this.currentMode === 'LIVE') {
-      badge.textContent = "LIVE";
-      badge.classList.add('badge-live');
-      liveBtn.classList.add('active');
-    } else if (this.currentMode === 'AWAY') {
-      badge.textContent = "AWAY";
-      badge.classList.add('badge-away');
-      awayBtn.classList.add('active');
-    } else if (this.currentMode === 'AI_STOPPED') {
-      badge.textContent = "AI STOPPED";
-      badge.classList.add('badge-stopped');
-    } else {
-      badge.textContent = this.currentMode;
+    if (mobileStatusDot) {
+      mobileStatusDot.className = `status-dot ${connected ? 'green' : 'red'}`;
     }
   }
 
-  syncControlButtons() {
-    const camBtn = document.getElementById('camera-toggle');
-    const micBtn = document.getElementById('mic-toggle');
-
-    if (this.currentMode === 'AWAY') {
-      camBtn.classList.add('disabled');
-      micBtn.classList.add('disabled');
-      camBtn.style.opacity = "0.5";
-      micBtn.style.opacity = "0.5";
-      camBtn.style.cursor = "not-allowed";
-      micBtn.style.cursor = "not-allowed";
-    } else {
-      camBtn.classList.remove('disabled');
-      micBtn.classList.remove('disabled');
-      camBtn.style.opacity = "1";
-      micBtn.style.opacity = "1";
-      camBtn.style.cursor = "pointer";
-      micBtn.style.cursor = "pointer";
+  applySettingsUpdates(settings) {
+    this.avatarEngine.applyConfig({
+      archetype: settings.archetype,
+      scale: settings.scale,
+      yOffset: settings.yOffset,
+      defaultExpression: settings.defaultExpression,
+      showHeadset: settings.showHeadset
+    });
+    
+    // Update monitor feeds
+    const monitorBadge = document.getElementById('desktop-chat-badge');
+    if (monitorBadge) {
+      monitorBadge.textContent = settings.chatReading ? 'MONITOR ACTIVE' : 'MONITOR OFF';
+      monitorBadge.className = settings.chatReading ? 'chat-mode-badge sub' : 'chat-mode-badge';
     }
   }
 
+  // --- RENDER HARDWARE PANEL (INTEGRATION LIST) ---
+  renderHardwareList(devices) {
+    const container = document.getElementById('desktop-hardware-list');
+    const mobileSelect = document.getElementById('mobile-cam-select');
+    const mobileMicSelect = document.getElementById('mobile-mic-select');
+    
+    if (container) {
+      container.innerHTML = '';
+      devices.forEach(dev => {
+        const item = document.createElement('div');
+        item.className = 'hw-device-item';
+        
+        let batteryInfo = '';
+        if (dev.connected && dev.battery !== null) {
+          batteryInfo = `<span class="battery-badge">${dev.battery}%</span>`;
+        }
+
+        item.innerHTML = `
+          <div class="hw-device-info">
+            <h5>${dev.name}</h5>
+            <p>${dev.type} • ${dev.spec}</p>
+          </div>
+          <div class="hw-device-status">
+            ${batteryInfo}
+            <span class="hw-status-dot ${dev.connected ? 'active' : 'inactive'}"></span>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // Populate mobile selector options
+    if (mobileSelect) {
+      mobileSelect.innerHTML = '';
+      devices.filter(d => d.type === 'Camera' || d.type === 'Phone Camera').forEach(cam => {
+        const opt = document.createElement('option');
+        opt.value = cam.id;
+        opt.textContent = `${cam.name} (${cam.connected ? 'Connected' : 'Disconnected'})`;
+        mobileSelect.appendChild(opt);
+      });
+    }
+    
+    if (mobileMicSelect) {
+      mobileMicSelect.innerHTML = '';
+      devices.filter(d => d.type === 'Microphone' || d.type === 'Small Microphone').forEach(mic => {
+        const opt = document.createElement('option');
+        opt.value = mic.id;
+        opt.textContent = `${mic.name} (${mic.connected ? 'Connected' : 'Disconnected'})`;
+        mobileMicSelect.appendChild(opt);
+      });
+    }
+  }
+
+  // --- SETTINGS MIGRATIONS (DOM MAPS) ---
   syncSettingsToForm() {
-    // Avatar
-    document.getElementById('setting-avatar-style').value = this.settings.archetype;
-    document.getElementById('setting-avatar-scale').value = this.settings.scale * 100;
-    document.getElementById('val-scale').textContent = `${this.settings.scale * 100}%`;
-    document.getElementById('setting-avatar-y').value = this.settings.yOffset;
-    document.getElementById('val-y').textContent = `${this.settings.yOffset}px`;
-    document.getElementById('setting-avatar-expression').value = this.settings.defaultExpression;
-    document.getElementById('setting-avatar-headset').checked = this.settings.showHeadset;
+    const s = this.stateManager.settings;
+    
+    // Sliders & selects
+    document.getElementById('setting-avatar-style').value = s.archetype;
+    document.getElementById('setting-avatar-scale').value = Math.round(s.scale * 100);
+    document.getElementById('val-scale').textContent = `${Math.round(s.scale * 100)}%`;
+    
+    document.getElementById('setting-avatar-y').value = s.yOffset;
+    document.getElementById('val-y').textContent = `${s.yOffset}px`;
+    
+    document.getElementById('setting-avatar-expression').value = s.defaultExpression;
+    document.getElementById('setting-avatar-headset').checked = s.showHeadset;
 
-    // AI Persona
-    document.getElementById('setting-ai-name').value = this.settings.aiName;
-    document.getElementById('setting-ai-personality').value = this.settings.personality;
-    document.getElementById('setting-ai-tone').value = this.settings.tone;
-    document.getElementById('setting-ai-length').value = this.settings.responseLength;
-    document.getElementById('setting-ai-language').value = this.settings.language;
+    // AI
+    document.getElementById('setting-ai-name').value = s.aiName;
+    document.getElementById('setting-ai-personality').value = s.personality;
+    document.getElementById('setting-ai-tone').value = s.tone;
+    document.getElementById('setting-ai-length').value = s.responseLength;
+    document.getElementById('setting-ai-language').value = s.language;
+    document.getElementById('setting-ai-instructions').value = s.customInstructions;
 
     // Knowledge
-    document.getElementById('setting-kn-creator').value = this.settings.knCreator;
-    document.getElementById('setting-kn-schedule').value = this.settings.knSchedule;
-    document.getElementById('setting-kn-faqs').value = this.settings.knFaq;
-    document.getElementById('setting-kn-allowed').value = this.settings.allowedTopics;
-    document.getElementById('setting-kn-forbidden').value = this.settings.forbiddenTopics;
+    document.getElementById('setting-kn-creator').value = s.knCreator || "Antigravity is a speedrunner playing retro RPGs.";
+    document.getElementById('setting-kn-schedule').value = s.knSchedule || "Tuesday & Thursday at 8 PM";
+    document.getElementById('setting-kn-faqs').value = s.knFaq || "Brown mechanical switches";
+    document.getElementById('setting-kn-allowed').value = s.allowedTopics;
+    document.getElementById('setting-kn-forbidden').value = s.forbiddenTopics;
 
     // Behavior
-    document.getElementById('setting-beh-frequency').value = this.settings.frequency;
-    document.getElementById('val-frequency').textContent = `${this.settings.frequency}%`;
-    document.getElementById('setting-beh-delay').value = this.settings.delay;
-    document.getElementById('val-delay').textContent = `${parseFloat(this.settings.delay).toFixed(1)}s`;
-    document.getElementById('setting-beh-auto').checked = this.settings.autoReplies;
-    document.getElementById('setting-beh-read').checked = this.settings.chatReading;
+    document.getElementById('setting-beh-frequency').value = s.frequency;
+    document.getElementById('val-frequency').textContent = `${s.frequency}%`;
+    
+    document.getElementById('setting-beh-delay').value = s.delay;
+    document.getElementById('val-delay').textContent = `${s.delay.toFixed(1)}s`;
+    
+    document.getElementById('setting-beh-auto').checked = s.autoReplies;
+    document.getElementById('setting-beh-read').checked = s.chatReading;
   }
 
   saveSettingsFromForm() {
-    // Avatar
-    this.settings.archetype = document.getElementById('setting-avatar-style').value;
-    this.settings.scale = parseFloat(document.getElementById('setting-avatar-scale').value) / 100;
-    this.settings.yOffset = parseInt(document.getElementById('setting-avatar-y').value);
-    this.settings.defaultExpression = document.getElementById('setting-avatar-expression').value;
-    this.settings.showHeadset = document.getElementById('setting-avatar-headset').checked;
+    const newSettings = {
+      archetype: document.getElementById('setting-avatar-style').value,
+      scale: parseFloat(document.getElementById('setting-avatar-scale').value) / 100,
+      yOffset: parseInt(document.getElementById('setting-avatar-y').value),
+      defaultExpression: document.getElementById('setting-avatar-expression').value,
+      showHeadset: document.getElementById('setting-avatar-headset').checked,
+      
+      aiName: document.getElementById('setting-ai-name').value,
+      personality: document.getElementById('setting-ai-personality').value,
+      tone: document.getElementById('setting-ai-tone').value,
+      responseLength: document.getElementById('setting-ai-length').value,
+      language: document.getElementById('setting-ai-language').value,
+      customInstructions: document.getElementById('setting-ai-instructions').value,
+      
+      knCreator: document.getElementById('setting-kn-creator').value,
+      knSchedule: document.getElementById('setting-kn-schedule').value,
+      knFaq: document.getElementById('setting-kn-faqs').value,
+      allowedTopics: document.getElementById('setting-kn-allowed').value,
+      forbiddenTopics: document.getElementById('setting-kn-forbidden').value,
 
-    // AI Persona
-    this.settings.aiName = document.getElementById('setting-ai-name').value;
-    this.settings.personality = document.getElementById('setting-ai-personality').value;
-    this.settings.tone = document.getElementById('setting-ai-tone').value;
-    this.settings.responseLength = document.getElementById('setting-ai-length').value;
-    this.settings.language = document.getElementById('setting-ai-language').value;
-
-    // Knowledge
-    this.settings.knCreator = document.getElementById('setting-kn-creator').value;
-    this.settings.knSchedule = document.getElementById('setting-kn-schedule').value;
-    this.settings.knFaq = document.getElementById('setting-kn-faqs').value;
-    this.settings.allowedTopics = document.getElementById('setting-kn-allowed').value;
-    this.settings.forbiddenTopics = document.getElementById('setting-kn-forbidden').value;
-
-    // Behavior
-    this.settings.frequency = parseInt(document.getElementById('setting-beh-frequency').value);
-    this.settings.delay = parseFloat(document.getElementById('setting-beh-delay').value);
-    this.settings.autoReplies = document.getElementById('setting-beh-auto').checked;
-    this.settings.chatReading = document.getElementById('setting-beh-read').checked;
-
-    this.saveSettings();
-
-    // Reapply configuration immediately
-    this.avatarManager.applyConfig(this.settings);
-    this.aiManager.applyConfig(this.settings);
-    
-    // Reflect changes in chat status
-    if (this.currentMode === 'LIVE' || this.currentMode === 'AWAY') {
-      if (this.settings.chatReading) {
-        this.chatManager.startSimulation();
-      } else {
-        this.chatManager.stopSimulation();
-      }
-    }
-    
-    this.chatManager.appendSystemMessage("Creator settings applied successfully.");
-  }
-
-  saveSettings() {
-    localStorage.setItem('stream_support_settings', JSON.stringify(this.settings));
-  }
-
-  loadSettings() {
-    const raw = localStorage.getItem('stream_support_settings');
-    if (raw) {
-      try {
-        const loaded = JSON.parse(raw);
-        this.settings = { ...this.settings, ...loaded };
-      } catch (e) {
-        console.warn("Could not load local storage settings: ", e);
-      }
-    }
-  }
-
-  resetSettingsToDefault() {
-    localStorage.removeItem('stream_support_settings');
-    this.settings = {
-      archetype: 'cyberpunk',
-      scale: 1.0,
-      yOffset: 0,
-      defaultExpression: 'neutral',
-      showHeadset: true,
-      aiName: 'Aura',
-      personality: 'A witty, energetic AI companion.',
-      tone: 'casual',
-      responseLength: 'short',
-      language: 'en-US',
-      knCreator: 'Antigravity is a speedrunner playing retro RPGs.',
-      knSchedule: 'Tuesday & Thursday at 8 PM',
-      knFaq: 'Brown mechanical switches',
-      allowedTopics: 'gaming, coffee, speedruns, mechanics, schedule',
-      forbiddenTopics: 'politics, financial advice, medical claims',
-      frequency: 70,
-      delay: 2.0,
-      autoReplies: true,
-      chatReading: true
+      frequency: parseInt(document.getElementById('setting-beh-frequency').value),
+      delay: parseFloat(document.getElementById('setting-beh-delay').value),
+      autoReplies: document.getElementById('setting-beh-auto').checked,
+      chatReading: document.getElementById('setting-beh-read').checked
     };
-    this.syncSettingsToForm();
-    this.avatarManager.applyConfig(this.settings);
-    this.aiManager.applyConfig(this.settings);
-    this.chatManager.appendSystemMessage("Creator settings reset to defaults.");
+
+    this.stateManager.updateSettings(newSettings);
+  }
+
+  exitWorkspace() {
+    // Stop feeds and streams
+    this.chatSystem.disconnectChat();
+    this.cameraSystem.disconnectCamera();
+    this.microphoneSystem.disconnectMicrophone();
+    
+    // Clear and reset UI view states
+    this.activeWorkspace = null;
+    document.body.className = 'view-selection';
+    document.getElementById('device-selection-screen').style.display = 'flex';
+    document.getElementById('computer-interface').style.display = 'none';
+    document.getElementById('phone-interface').style.display = 'none';
   }
 }
 
-// Instantiate and start core application
+// Instantiate and start app on load
 window.addEventListener('DOMContentLoaded', () => {
   const app = new AppController();
+  window.appInstance = app; // globally export for debugging console
   app.init();
 });
