@@ -44,6 +44,49 @@
       errDiv.style.wordBreak = 'break-all';
       errDiv.innerText = 'Promise Rejection: ' + e.reason;
       document.body.appendChild(errDiv);
+      const originalConsoleError = console.error;
+      console.error = function() {
+        originalConsoleError.apply(console, arguments);
+        const msg = Array.from(arguments).map(x => typeof x === 'object' ? JSON.stringify(x) : x).join(' ');
+        const errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.bottom = '150px';
+        errDiv.style.left = '10px';
+        errDiv.style.background = '#b91c1c';
+        errDiv.style.color = '#ffffff';
+        errDiv.style.padding = '12px';
+        errDiv.style.borderRadius = '8px';
+        errDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
+        errDiv.style.zIndex = '99999';
+        errDiv.style.fontSize = '12px';
+        errDiv.style.maxWidth = '90%';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.style.wordBreak = 'break-all';
+        errDiv.innerText = 'Console Error: ' + msg;
+        document.body.appendChild(errDiv);
+      };
+
+      const originalConsoleWarn = console.warn;
+      console.warn = function() {
+        originalConsoleWarn.apply(console, arguments);
+        const msg = Array.from(arguments).map(x => typeof x === 'object' ? JSON.stringify(x) : x).join(' ');
+        const errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.bottom = '220px';
+        errDiv.style.left = '10px';
+        errDiv.style.background = '#ea580c';
+        errDiv.style.color = '#ffffff';
+        errDiv.style.padding = '12px';
+        errDiv.style.borderRadius = '8px';
+        errDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
+        errDiv.style.zIndex = '99999';
+        errDiv.style.fontSize = '12px';
+        errDiv.style.maxWidth = '90%';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.style.wordBreak = 'break-all';
+        errDiv.innerText = 'Console Warn: ' + msg;
+        document.body.appendChild(errDiv);
+      };
     });
   </script>
 </head>
@@ -763,6 +806,6 @@
   </dialog>
 
   <!-- Core JavaScript Module -->
-  <script type="module" src="main.js?v=2.2"></script>
+  <script type="module" src="main.js?v=2.3"></script>
 </body>
 </html>
