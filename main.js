@@ -310,8 +310,10 @@ class AppController {
     try {
       // Connect camera directly to bypass double request race check on macOS
       const connected = await this.cameraSystem.connectCamera();
+      const prefix = this.activeWorkspace;
+      const placeholder = document.getElementById(`${prefix}-video-placeholder`);
+
       if (connected) {
-          const prefix = this.activeWorkspace;
           const videoEl = document.getElementById(`${prefix}-video-el`);
           if (videoEl && this.cameraSystem.stream) {
             videoEl.srcObject = this.cameraSystem.stream;
@@ -322,8 +324,11 @@ class AppController {
             }
           }
           
-          const placeholder = document.getElementById(`${prefix}-video-placeholder`);
-          if (placeholder) placeholder.classList.add('hidden');
+          if (placeholder) {
+            placeholder.classList.add('hidden');
+            placeholder.textContent = 'Camera Off';
+            placeholder.style.color = '';
+          }
           
           const indicator = document.getElementById(`${prefix}-cam-indicator`);
           if (indicator) {
@@ -343,11 +348,18 @@ class AppController {
           }
 
           await this.deviceManager.scanDevices();
-        }
-      } catch (e) {
-        console.error("connectCameraStream error:", e);
+      } else {
+          // Display connection error message on placeholder
+          if (placeholder) {
+            placeholder.classList.remove('hidden');
+            placeholder.textContent = `Error: ${this.cameraSystem.errorMsg || 'Connection Failed'}`;
+            placeholder.style.color = '#ef4444';
+          }
       }
+    } catch (e) {
+      console.error("connectCameraStream error:", e);
     }
+  }
 
   async disconnectCameraStream() {
     try {
@@ -360,7 +372,11 @@ class AppController {
       }
       
       const placeholder = document.getElementById(`${prefix}-video-placeholder`);
-      if (placeholder) placeholder.classList.remove('hidden');
+      if (placeholder) {
+        placeholder.classList.remove('hidden');
+        placeholder.textContent = 'Camera Off';
+        placeholder.style.color = '';
+      }
       
       const indicator = document.getElementById(`${prefix}-cam-indicator`);
       if (indicator) {
