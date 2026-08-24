@@ -160,18 +160,10 @@
             <span class="ai-active-pulse">AI is responding</span>
           </div>
 
-          <!-- Camera preview video layer -->
-          <div class="video-preview-layer">
-            <video id="desktop-video-el" autoplay playsinline muted></video>
-            <div class="video-overlay" id="desktop-video-placeholder">
-              <div class="overlay-icon">
-                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M23 7l-7 5 7 5V7z"></path>
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                </svg>
-              </div>
-              <p id="desktop-video-status-text">Camera Off</p>
-            </div>
+          <!-- Fallback button if popup is blocked -->
+          <div class="popup-fallback-overlay hidden" id="desktop-popup-fallback">
+            <p>Camera Window was blocked by browser.</p>
+            <button class="fallback-open-btn" id="desktop-open-popup-btn">Open Camera Window</button>
           </div>
 
           <!-- SVG avatar layer (Overlay) -->
@@ -332,12 +324,10 @@
       <div class="mobile-tab-panel active" id="m-tab-home">
         <!-- Dual Previews stacked -->
         <div class="mobile-previews">
-          <div class="mobile-cam-preview">
-            <video id="mobile-video-el" autoplay playsinline muted></video>
-            <div class="mobile-video-placeholder" id="mobile-video-placeholder">
-              <p>Mobile Camera Off</p>
-            </div>
-            <span class="preview-label-badge">Camera Preview</span>
+          <!-- Fallback button if popup is blocked -->
+          <div class="popup-fallback-overlay hidden" id="mobile-popup-fallback" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 40; text-align: center; background: rgba(15,23,42,0.95); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+            <p style="font-size: 0.75rem; margin: 0 0 6px 0;">Camera Window blocked.</p>
+            <button class="fallback-open-btn" id="mobile-open-popup-btn" style="background: var(--border-focus); border: none; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">Open Camera Window</button>
           </div>
 
           <div class="mobile-avatar-preview">

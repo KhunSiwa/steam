@@ -54,6 +54,17 @@ export class AvatarEngine {
     // Speech mouth state cycling
     this.mouthOpenState = false;
     this.lastMouthToggle = 0;
+
+    // Gesture Mapping config
+    this.gestureToStateMap = {
+      'ONE_FINGER': 'thinking',
+      'TWO_FINGERS': 'happy',
+      'THREE_FINGERS': 'laugh',
+      'THUMBS_UP': 'excited',
+      'OPEN_PALM': 'wave',
+      'FIST': 'angry',
+      'NONE': null
+    };
   }
 
   mount() {
@@ -223,22 +234,22 @@ export class AvatarEngine {
   }
 
   updateFaceMesh(landmarks) {
-    if (!landmarks || landmarks.length === 0 || this.mode !== 'tracking') return;
+    if (!landmarks || this.mode !== 'tracking') return;
     
     // Key landmarks mapping
-    const nose = landmarks[4];
-    const cheekL = landmarks[234];
-    const cheekR = landmarks[454];
-    const forehead = landmarks[10];
-    const chin = landmarks[152];
-    const eyeL_inner = landmarks[133];
-    const eyeL_outer = landmarks[33];
-    const eyeR_inner = landmarks[362];
-    const eyeR_outer = landmarks[263];
-    const eyelidL_top = landmarks[159];
-    const eyelidL_bottom = landmarks[145];
-    const eyelidR_top = landmarks[386];
-    const eyelidR_bottom = landmarks[374];
+    const nose = landmarks.nose;
+    const cheekL = landmarks.cheekL;
+    const cheekR = landmarks.cheekR;
+    const forehead = landmarks.forehead;
+    const chin = landmarks.chin;
+    const eyeL_inner = landmarks.eyeL_inner;
+    const eyeL_outer = landmarks.eyeL_outer;
+    const eyeR_inner = landmarks.eyeR_inner;
+    const eyeR_outer = landmarks.eyeR_outer;
+    const eyelidL_top = landmarks.eyelidL_top;
+    const eyelidL_bottom = landmarks.eyelidL_bottom;
+    const eyelidR_top = landmarks.eyelidR_top;
+    const eyelidR_bottom = landmarks.eyelidR_bottom;
     
     // 1. Yaw estimation (Left/Right look rotation)
     const d_nose_left = Math.hypot(nose.x - cheekL.x, nose.y - cheekL.y);
@@ -347,6 +358,14 @@ export class AvatarEngine {
     }
     
     this.frameId = requestAnimationFrame(() => this.updateFrame());
+  }
+
+  updateHandGesture(gestureName) {
+    if (this.mode !== 'tracking') return;
+    const targetState = this.gestureToStateMap[gestureName];
+    if (targetState) {
+      this.setOverrideExpression(targetState);
+    }
   }
 
   // Fallback / legacy methods

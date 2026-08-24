@@ -637,8 +637,8 @@ body.view-phone #phone-interface { display: flex !important; }
 /* AVATAR SYSTEM */
 /* AVATAR SYSTEM */
 .avatar-scale-wrapper {
-  width: 340px;
-  height: 340px;
+  width: 480px;
+  height: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1273,13 +1273,17 @@ body.view-phone #phone-interface { display: flex !important; }
 
 /* HOME TAB CONTENT */
 .mobile-previews {
-  display: grid;
-  grid-template-rows: 160px 180px;
-  gap: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 280px;
+  position: relative;
 }
 
-.mobile-cam-preview, .mobile-avatar-preview {
-  background-color: #000;
+.mobile-avatar-preview {
+  background-color: #090e18;
+  width: 100%;
+  height: 100%;
   border-radius: 12px;
   border: 1px solid var(--border-color);
   overflow: hidden;
@@ -1289,45 +1293,9 @@ body.view-phone #phone-interface { display: flex !important; }
   justify-content: center;
 }
 
-.mobile-cam-preview video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mobile-video-placeholder {
-  position: absolute;
-  inset: 0;
-  background-color: rgba(17,24,39,0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.preview-label-badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  background-color: rgba(0,0,0,0.6);
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: var(--text-main);
-  z-index: 5;
-}
-
-.mobile-avatar-preview {
-  background-color: #090e18;
-}
-
 .mobile-avatar-preview .avatar-scale-wrapper {
-  width: 200px;
-  height: 200px;
+  width: 250px;
+  height: 250px;
 }
 
 .mobile-avatar-broadcast {
@@ -1782,4 +1750,49 @@ body.view-phone #phone-interface { display: flex !important; }
   .status-indicator-dot, .pulse-indicator, .small-pulse {
     animation: none !important;
   }
+}
+
+/* Fallback blocked popup styles */
+.popup-fallback-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(9, 13, 22, 0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 40;
+  text-align: center;
+  padding: 20px;
+}
+
+.popup-fallback-overlay p {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.popup-fallback-overlay.hidden {
+  display: none !important;
+}
+
+.fallback-open-btn {
+  background-color: var(--border-focus);
+  border: 1px solid var(--border-focus);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.fallback-open-btn:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
 }
