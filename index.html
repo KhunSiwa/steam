@@ -8,6 +8,44 @@
   <!-- MediaPipe CDN Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script>
+    window.addEventListener('error', function(e) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.bottom = '10px';
+      errDiv.style.left = '10px';
+      errDiv.style.background = '#ef4444';
+      errDiv.style.color = '#ffffff';
+      errDiv.style.padding = '12px';
+      errDiv.style.borderRadius = '8px';
+      errDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
+      errDiv.style.zIndex = '99999';
+      errDiv.style.fontSize = '12px';
+      errDiv.style.maxWidth = '90%';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.wordBreak = 'break-all';
+      errDiv.innerText = 'JS Error: ' + e.message + '\nFile: ' + e.filename + ':' + e.lineno;
+      document.body.appendChild(errDiv);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.bottom = '80px';
+      errDiv.style.left = '10px';
+      errDiv.style.background = '#f97316';
+      errDiv.style.color = '#ffffff';
+      errDiv.style.padding = '12px';
+      errDiv.style.borderRadius = '8px';
+      errDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
+      errDiv.style.zIndex = '99999';
+      errDiv.style.fontSize = '12px';
+      errDiv.style.maxWidth = '90%';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.wordBreak = 'break-all';
+      errDiv.innerText = 'Promise Rejection: ' + e.reason;
+      document.body.appendChild(errDiv);
+    });
+  </script>
 </head>
 <body class="view-selection">
 
