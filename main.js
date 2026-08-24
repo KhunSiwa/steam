@@ -308,10 +308,9 @@ class AppController {
 
   async connectCameraStream() {
     try {
-      const allowed = await this.cameraSystem.requestCamera();
-      if (allowed) {
-        const connected = await this.cameraSystem.connectCamera();
-        if (connected) {
+      // Connect camera directly to bypass double request race check on macOS
+      const connected = await this.cameraSystem.connectCamera();
+      if (connected) {
           const prefix = this.activeWorkspace;
           const videoEl = document.getElementById(`${prefix}-video-el`);
           if (videoEl && this.cameraSystem.stream) {
