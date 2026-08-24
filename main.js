@@ -344,11 +344,10 @@ class AppController {
 
           await this.deviceManager.scanDevices();
         }
+      } catch (e) {
+        console.error("connectCameraStream error:", e);
       }
-    } catch (e) {
-      console.error("connectCameraStream error:", e);
     }
-  }
 
   async disconnectCameraStream() {
     try {
