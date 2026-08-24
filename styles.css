@@ -1755,7 +1755,7 @@ body.view-phone #phone-interface { display: flex !important; }
 /* Floating Camera Card styling */
 .floating-camera-card {
   position: absolute;
-  top: 16px;
+  top: 70px;
   right: 16px;
   width: 180px;
   background-color: rgba(15, 23, 42, 0.95);
