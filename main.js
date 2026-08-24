@@ -61,10 +61,7 @@ class AppController {
   async init() {
     console.log("Streamer Support system initialisation...");
     
-    // 1. Detect if FastAPI backend is online
-    await this.probeBackend();
-    
-    // 2. Bind selection screen buttons
+    // 1. Bind selection screen buttons immediately (Non-blocking)
     document.getElementById('btn-device-computer').addEventListener('click', () => {
       this.stateManager.setDeviceType('computer');
     });
@@ -72,9 +69,12 @@ class AppController {
     document.getElementById('btn-device-phone').addEventListener('click', () => {
       this.stateManager.setDeviceType('phone');
     });
-
-    // 3. Scan hardware initial state
+    
+    // 2. Scan hardware initial state
     await this.deviceManager.scanDevices();
+
+    // 3. Detect if FastAPI backend is online in the background
+    this.probeBackend();
   }
 
   async probeBackend() {
