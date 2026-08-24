@@ -45,8 +45,8 @@ class AppController {
     
     // active view flags
     this.activeWorkspace = null; // 'computer' or 'phone'
-    this.cameraWindow = null;
-    this.popupCheckInterval = null;
+    this.faceMesh = null;
+    this.trackingLoopActive = false;
     
     // Bind global state notifiers
     this.stateManager.on('deviceTypeChanged', (type) => this.handleWorkspaceRoute(type));
@@ -55,7 +55,7 @@ class AppController {
     this.stateManager.on('settingsChanged', (settings) => this.applySettingsUpdates(settings));
     this.stateManager.on('devicesUpdated', (devices) => this.renderHardwareList(devices));
     
-    this.registerMessageListener();
+    this.initFaceMesh();
   }
 
   async init() {
@@ -141,7 +141,28 @@ class AppController {
     // Control toggles
     document.getElementById('desktop-cam-switch').addEventListener('click', (e) => this.toggleCamera(e.target));
     document.getElementById('desktop-control-cam').addEventListener('click', () => this.toggleCamera(document.getElementById('desktop-cam-switch')));
-    document.getElementById('desktop-open-popup-btn').addEventListener('click', () => this.openCameraWindow());
+    document.getElementById('desktop-cam-toggle-btn')?.addEventListener('click', () => this.toggleCamera());
+    document.getElementById('desktop-tracking-toggle-btn')?.addEventListener('click', (e) => {
+      const active = this.avatarEngine.mode === 'tracking';
+      if (active) {
+        this.avatarEngine.setMode('manual');
+        e.currentTarget.textContent = 'Tracking: OFF';
+        e.currentTarget.classList.remove('active');
+        document.getElementById('desktop-mode-manual')?.classList.add('active');
+        document.getElementById('desktop-mode-tracking')?.classList.remove('active');
+      } else {
+        this.avatarEngine.setMode('tracking');
+        e.currentTarget.textContent = 'Tracking: ON';
+        e.currentTarget.classList.add('active');
+        document.getElementById('desktop-mode-tracking')?.classList.add('active');
+        document.getElementById('desktop-mode-manual')?.classList.remove('active');
+        if (this.cameraSystem.cameraEnabled) {
+          this.runFaceMeshLoop();
+        } else {
+          this.connectCameraStream();
+        }
+      }
+    });
     
     document.getElementById('desktop-mic-switch').addEventListener('click', (e) => this.toggleMicrophone(e.target));
     document.getElementById('desktop-control-mic').addEventListener('click', () => this.toggleMicrophone(document.getElementById('desktop-mic-switch')));
@@ -245,7 +266,6 @@ class AppController {
 
     // Quick control buttons
     document.getElementById('mobile-quick-cam').addEventListener('click', (e) => this.toggleCamera(e.target));
-    document.getElementById('mobile-open-popup-btn').addEventListener('click', () => this.openCameraWindow());
     document.getElementById('mobile-quick-mic').addEventListener('click', (e) => this.toggleMicrophone(e.target));
     
     document.getElementById('mobile-quick-avatar').addEventListener('click', (e) => {
@@ -280,9 +300,96 @@ class AppController {
     if (this.stateManager.currentMode === AppStates.AWAY) return; // Camera locked off in away mode
 
     if (this.cameraSystem.cameraEnabled) {
-      this.handleCameraDisconnect();
+      await this.disconnectCameraStream();
     } else {
-      this.openCameraWindow();
+      await this.connectCameraStream();
+    }
+  }
+
+  async connectCameraStream() {
+    try {
+      const allowed = await this.cameraSystem.requestCamera();
+      if (allowed) {
+        const connected = await this.cameraSystem.connectCamera();
+        if (connected) {
+          const prefix = this.activeWorkspace;
+          const videoEl = document.getElementById(`${prefix}-video-el`);
+          if (videoEl && this.cameraSystem.stream) {
+            videoEl.srcObject = this.cameraSystem.stream;
+            try {
+              await videoEl.play();
+            } catch (playErr) {
+              console.warn("Video play failed:", playErr);
+            }
+          }
+          
+          const placeholder = document.getElementById(`${prefix}-video-placeholder`);
+          if (placeholder) placeholder.classList.add('hidden');
+          
+          const indicator = document.getElementById(`${prefix}-cam-indicator`);
+          if (indicator) {
+            indicator.textContent = '● ON';
+            indicator.classList.add('active');
+          }
+          
+          document.getElementById(`${prefix}-cam-switch`)?.classList.add('active');
+          document.getElementById('desktop-control-cam')?.classList.add('active');
+          document.getElementById('mobile-quick-cam')?.classList.add('active');
+          
+          const cardCamToggle = document.getElementById(`${prefix}-cam-toggle-btn`);
+          if (cardCamToggle) cardCamToggle.classList.add('active');
+          
+          if (this.avatarEngine.mode === 'tracking') {
+            this.runFaceMeshLoop();
+          }
+
+          await this.deviceManager.scanDevices();
+        }
+      }
+    } catch (e) {
+      console.error("connectCameraStream error:", e);
+    }
+  }
+
+  async disconnectCameraStream() {
+    try {
+      await this.cameraSystem.disconnectCamera();
+      
+      const prefix = this.activeWorkspace;
+      const videoEl = document.getElementById(`${prefix}-video-el`);
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
+      
+      const placeholder = document.getElementById(`${prefix}-video-placeholder`);
+      if (placeholder) placeholder.classList.remove('hidden');
+      
+      const indicator = document.getElementById(`${prefix}-cam-indicator`);
+      if (indicator) {
+        indicator.textContent = '● OFF';
+        indicator.classList.remove('active');
+      }
+      
+      document.getElementById(`${prefix}-cam-switch`)?.classList.remove('active');
+      document.getElementById('desktop-control-cam')?.classList.remove('active');
+      document.getElementById('mobile-quick-cam')?.classList.remove('active');
+
+      const cardCamToggle = document.getElementById(`${prefix}-cam-toggle-btn`);
+      if (cardCamToggle) cardCamToggle.classList.remove('active');
+
+      if (this.avatarEngine) {
+        this.avatarEngine.targetYaw = 0;
+        this.avatarEngine.targetPitch = 0;
+        this.avatarEngine.targetRoll = 0;
+        this.avatarEngine.targetX = 0;
+        this.avatarEngine.targetY = 0;
+        this.avatarEngine.isBlinking = false;
+        this.avatarEngine.isSpeaking = false;
+      }
+
+      await this.deviceManager.scanDevices();
+    } catch (e) {
+      console.error("disconnectCameraStream error:", e);
     }
   }
 
@@ -352,7 +459,7 @@ class AppController {
       // (Otherwise keep offline)
     } else if (mode === AppStates.AWAY) {
       // 1. Cut real camera & microphone inputs immediately
-      this.handleCameraDisconnect();
+      this.disconnectCameraStream();
       this.microphoneSystem.disconnectMicrophone();
       
       // Update UI button states
@@ -547,7 +654,7 @@ class AppController {
   exitWorkspace() {
     // Stop feeds and streams
     this.chatSystem.disconnectChat();
-    this.handleCameraDisconnect();
+    this.disconnectCameraStream();
     this.microphoneSystem.disconnectMicrophone();
     
     // Clear and reset UI view states
@@ -558,120 +665,73 @@ class AppController {
     document.getElementById('phone-interface').style.display = 'none';
   }
 
-  initFaceMesh() {}
-  runFaceMeshLoop() {}
-
-  registerMessageListener() {
-    window.addEventListener('message', (event) => {
-      // Validate safe local origin
-      if (event.origin !== window.location.origin) return;
-
-      const msg = event.data;
-      if (!msg) return;
-
-      if (msg.type === 'camera_connected') {
-        this.handleCameraConnect();
-      } else if (msg.type === 'camera_disconnected') {
-        this.handleCameraDisconnect();
-      } else if (msg.type === 'STREAM_SUPPORT_TRACKING') {
-        if (this.avatarEngine) {
-          if (msg.face) {
-            this.avatarEngine.updateFaceMesh(msg.face);
+  initFaceMesh() {
+    try {
+      if (typeof FaceMesh !== 'undefined') {
+        this.faceMesh = new FaceMesh({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+        
+        this.faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        
+        this.faceMesh.onResults((results) => {
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const landmarks = results.multiFaceLandmarks[0];
+            
+            // Map raw landmarks array to structural properties expected by AvatarEngine.updateFaceMesh
+            const faceObj = {
+              nose: landmarks[4],
+              cheekL: landmarks[234],
+              cheekR: landmarks[454],
+              forehead: landmarks[10],
+              chin: landmarks[152],
+              eyeL_inner: landmarks[133],
+              eyeL_outer: landmarks[33],
+              eyeR_inner: landmarks[362],
+              eyeR_outer: landmarks[263],
+              eyelidL_top: landmarks[159],
+              eyelidL_bottom: landmarks[145],
+              eyelidR_top: landmarks[386],
+              eyelidR_bottom: landmarks[374]
+            };
+            
+            if (this.avatarEngine) {
+              this.avatarEngine.updateFaceMesh(faceObj);
+            }
           }
-          if (msg.gesture) {
-            this.avatarEngine.updateHandGesture(msg.gesture);
-          }
-        }
+        });
+        
+        console.log("MediaPipe FaceMesh initialised locally.");
+      } else {
+        console.warn("MediaPipe FaceMesh library not loaded. Face tracking fallback to Manual Mode.");
       }
-    });
-  }
-
-  openCameraWindow() {
-    // Open separate camera controller popup window
-    const w = 480;
-    const h = 600;
-    const left = (window.screen.width / 2) - (w / 2);
-    const top = (window.screen.height / 2) - (h / 2);
-    
-    this.cameraWindow = window.open(
-      'camera.html', 
-      'CameraTracking', 
-      `width=${w},height=${h},top=${top},left=${left},status=no,menubar=no,toolbar=no`
-    );
-
-    const fallbackOverlay = document.getElementById(`${this.activeWorkspace}-popup-fallback`);
-
-    if (!this.cameraWindow) {
-      // Popup was blocked by browser
-      console.warn("Camera Tracking window popup was blocked by browser.");
-      if (fallbackOverlay) {
-        fallbackOverlay.classList.remove('hidden');
-      }
-    } else {
-      if (fallbackOverlay) {
-        fallbackOverlay.classList.add('hidden');
-      }
-      
-      // Start tracking popup window closed state (1s check loop)
-      if (this.popupCheckInterval) clearInterval(this.popupCheckInterval);
-      this.popupCheckInterval = setInterval(() => {
-        if (this.cameraWindow && this.cameraWindow.closed) {
-          this.handleCameraDisconnect();
-        }
-      }, 1000);
+    } catch (e) {
+      console.warn("MediaPipe FaceMesh initialization failed: ", e);
     }
   }
 
-  async handleCameraConnect() {
-    this.cameraSystem.cameraEnabled = true;
-    
-    // Highlight camera switches in main studio
-    const camSwitch = document.getElementById(`${this.activeWorkspace}-cam-switch`);
-    if (camSwitch) camSwitch.classList.add('active');
-    
-    const controlCam = document.getElementById('desktop-control-cam');
-    if (controlCam) controlCam.classList.add('active');
-    
-    const fallbackOverlay = document.getElementById(`${this.activeWorkspace}-popup-fallback`);
-    if (fallbackOverlay) fallbackOverlay.classList.add('hidden');
-
-    // Sync device list
-    await this.deviceManager.scanDevices();
-  }
-
-  async handleCameraDisconnect() {
-    this.cameraSystem.cameraEnabled = false;
-    
-    // Remove highlight switches in main studio
-    const camSwitch = document.getElementById(`${this.activeWorkspace}-cam-switch`);
-    if (camSwitch) camSwitch.classList.remove('active');
-    
-    const controlCam = document.getElementById('desktop-control-cam');
-    if (controlCam) controlCam.classList.remove('active');
-    
-    if (this.popupCheckInterval) {
-      clearInterval(this.popupCheckInterval);
-      this.popupCheckInterval = null;
+  runFaceMeshLoop() {
+    if (!this.cameraSystem.cameraEnabled || this.avatarEngine.mode !== 'tracking') {
+      this.trackingLoopActive = false;
+      return;
     }
     
-    if (this.cameraWindow && !this.cameraWindow.closed) {
-      this.cameraWindow.close();
+    this.trackingLoopActive = true;
+    const prefix = this.activeWorkspace;
+    const videoEl = document.getElementById(`${prefix}-video-el`);
+    
+    if (videoEl && videoEl.readyState >= 2 && this.faceMesh) {
+      this.faceMesh.send({ image: videoEl }).catch(err => {
+        console.warn("FaceMesh send error: ", err);
+      });
     }
-    this.cameraWindow = null;
-
-    // Reset avatar tracking targets to center
-    if (this.avatarEngine) {
-      this.avatarEngine.targetYaw = 0;
-      this.avatarEngine.targetPitch = 0;
-      this.avatarEngine.targetRoll = 0;
-      this.avatarEngine.targetX = 0;
-      this.avatarEngine.targetY = 0;
-      this.avatarEngine.isBlinking = false;
-      this.avatarEngine.isSpeaking = false;
-    }
-
-    // Sync device list
-    await this.deviceManager.scanDevices();
+    
+    requestAnimationFrame(() => this.runFaceMeshLoop());
   }
 
   bindAvatarControls(prefix) {
@@ -682,6 +742,13 @@ class AppController {
       btnManual.addEventListener('click', () => {
         this.avatarEngine.setMode('manual');
         
+        // Sync desktop card tracking button label if in desktop prefix
+        const cardTrackBtn = document.getElementById('desktop-tracking-toggle-btn');
+        if (cardTrackBtn) {
+          cardTrackBtn.textContent = 'Tracking: OFF';
+          cardTrackBtn.classList.remove('active');
+        }
+
         // Sync other workspace view mode
         const other = prefix === 'desktop' ? 'mobile' : 'desktop';
         const otherBtnManual = document.getElementById(`${other}-mode-manual`);
@@ -694,9 +761,18 @@ class AppController {
       btnTracking.addEventListener('click', () => {
         this.avatarEngine.setMode('tracking');
         if (!this.cameraSystem.cameraEnabled) {
-          this.openCameraWindow();
+          this.connectCameraStream();
+        } else {
+          this.runFaceMeshLoop();
         }
         
+        // Sync desktop card tracking button label if in desktop prefix
+        const cardTrackBtn = document.getElementById('desktop-tracking-toggle-btn');
+        if (cardTrackBtn) {
+          cardTrackBtn.textContent = 'Tracking: ON';
+          cardTrackBtn.classList.add('active');
+        }
+
         // Sync other workspace view mode
         const other = prefix === 'desktop' ? 'mobile' : 'desktop';
         const otherBtnTracking = document.getElementById(`${other}-mode-tracking`);

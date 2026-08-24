@@ -272,14 +272,9 @@ export class AvatarEngine {
     this.targetRoll = Math.atan2(dy, dx) * (180 / Math.PI);
     this.targetRoll = Math.max(-8, Math.min(8, this.targetRoll));
     
-    // 4. Translate X and Y (face centering)
-    // Horizontal center maps from 0.5 camera coordinate center.
-    // Invert X because camera preview is mirrored.
-    this.targetX = (0.5 - nose.x) * 140;
-    this.targetX = Math.max(-25, Math.min(25, this.targetX));
-    
-    this.targetY = (nose.y - 0.52) * 120;
-    this.targetY = Math.max(-15, Math.min(15, this.targetY));
+    // 4. Translate X and Y (Disabled to keep character centered)
+    this.targetX = 0;
+    this.targetY = 0;
     
     // 5. Eye Blink Estimation
     const eyeL_open = Math.hypot(eyelidL_top.x - eyelidL_bottom.x, eyelidL_top.y - eyelidL_bottom.y);
