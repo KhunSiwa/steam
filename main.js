@@ -314,16 +314,6 @@ class AppController {
       const placeholder = document.getElementById(`${prefix}-video-placeholder`);
 
       if (connected) {
-          const videoEl = document.getElementById(`${prefix}-video-el`);
-          if (videoEl && this.cameraSystem.stream) {
-            videoEl.srcObject = this.cameraSystem.stream;
-            try {
-              await videoEl.play();
-            } catch (playErr) {
-              console.warn("Video play failed:", playErr);
-            }
-          }
-          
           if (placeholder) {
             placeholder.classList.add('hidden');
             placeholder.textContent = 'Camera Off';
